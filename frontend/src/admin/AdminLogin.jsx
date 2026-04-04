@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { authService } from '../services/api';
 import { Lock } from 'lucide-react';
 
 const AdminLogin = () => {
@@ -12,7 +12,7 @@ const AdminLogin = () => {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post('http://localhost:5000/api/auth/login', { username, password });
+      const res = await authService.login({ username, password });
       if (res.data.token) {
         localStorage.setItem('adminToken', res.data.token);
         navigate('/admin');

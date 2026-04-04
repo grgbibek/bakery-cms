@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { productService } from '../services/api';
 import { Edit2, Trash2, Plus, X, Image as ImageIcon, Package } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -17,7 +17,7 @@ const AdminProducts = () => {
 
   const fetchProducts = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/products');
+      const res = await productService.getProducts();
       setProducts(res.data);
     } catch (error) {
       console.error(error);
@@ -35,12 +35,11 @@ const AdminProducts = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const config = { headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` } };
       if (editingId) {
-        await axios.put(`http://localhost:5000/api/products/${editingId}`, formData, config);
+        await productService.updateProduct(editingId, formData);
         showNotification('Product updated successfully!');
       } else {
-        await axios.post('http://localhost:5000/api/products', formData, config);
+        await productService.createProduct(formData);
         showNotification('Product added successfully!');
       }
       setFormData({ name: '', description: '', price: '', image: '', category: '' });
@@ -62,8 +61,7 @@ const AdminProducts = () => {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
       try {
-        const config = { headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` } };
-        await axios.delete(`http://localhost:5000/api/products/${id}`, config);
+        await productService.deleteProduct(id);
         showNotification('Product deleted');
         fetchProducts();
       } catch (error) {

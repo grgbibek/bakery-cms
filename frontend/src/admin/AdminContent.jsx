@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { contentService } from '../services/api';
 import { Save, CheckCircle, RefreshCw } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -50,7 +50,7 @@ const AdminContent = () => {
 
   const fetchContent = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/content');
+      const res = await contentService.getContent();
       const contentObj = res.data.reduce((acc, item) => {
         acc[item.key_name] = item.value;
         return acc;
@@ -64,11 +64,10 @@ const AdminContent = () => {
   const handleSave = async (section_key) => {
     setSavingKeys({ ...savingKeys, [section_key]: true });
     try {
-      const config = { headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` } };
-      await axios.post('http://localhost:5000/api/content', {
+      await contentService.updateContent({
         key_name: section_key,
         value: content[section_key] || ''
-      }, config);
+      });
       
       setSavingKeys({ ...savingKeys, [section_key]: false });
       setSuccessKeys({ ...successKeys, [section_key]: true });

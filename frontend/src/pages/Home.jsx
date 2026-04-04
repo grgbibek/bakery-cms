@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { contentService, productService } from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Gift } from 'lucide-react';
 import Navbar from '../components/Navbar';
@@ -30,7 +30,7 @@ const Home = () => {
 
   useEffect(() => {
     // Fetch CMS Content
-    axios.get('http://localhost:5000/api/content')
+    contentService.getContent()
       .then(res => {
         if (res.data.length === 0) throw new Error("Empty");
         const contentObj = res.data.reduce((acc, item) => {
@@ -48,7 +48,7 @@ const Home = () => {
       });
 
     // Fetch Products
-    axios.get('http://localhost:5000/api/products')
+    productService.getProducts()
       .then(res => {
         if (res.data.length === 0) throw new Error("Empty");
         setProducts(res.data);
