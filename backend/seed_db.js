@@ -8,22 +8,28 @@ const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: path.join(__dirname, '.env') });
 
+const sampleCategories = [
+  { name: 'Pastries', description: 'Delicate, flaky, and buttery baked goods' },
+  { name: 'Breads', description: 'Freshly baked artisan breads' },
+  { name: 'Cakes', description: 'Decadent cakes for any occasion' },
+];
+
 const sampleProducts = [
-  { name: 'Almond Croissant', description: 'Flaky, buttery croissant filled with sweet almond frangipane and topped with toasted almonds.', price: 4.50, image: 'https://images.unsplash.com/photo-1549903072-7e6e0bedb7fb?auto=format&fit=crop&q=80&w=800' },
-  { name: 'Black Forest Cake', description: 'Rich chocolate sponge cake layered with whipped cream and cherries, sprinkled with chocolate shavings.', price: 45.00, image: 'https://images.unsplash.com/photo-1571115177098-24fa10bba689?auto=format&fit=crop&q=80&w=800' },
-  { name: 'Artisan Sourdough', description: 'Crusty loaf with a chewy, tangy interior naturally leavened over 48 hours.', price: 7.00, image: 'https://images.unsplash.com/photo-1589367920969-ab8e050bfc19?auto=format&fit=crop&q=80&w=800' },
-  { name: 'French Baguette', description: 'Classic crisp crust with a soft, airy interior. Baked fresh every morning.', price: 3.50, image: 'https://images.unsplash.com/photo-1597079910443-60c43fc4f729?auto=format&fit=crop&q=80&w=800' },
-  { name: 'Strawberry Tart', description: 'Fresh seasonal strawberries on a bed of vanilla pastry cream in a buttery shell.', price: 6.50, image: 'https://images.unsplash.com/photo-1519869325930-281384150729?auto=format&fit=crop&q=80&w=800' },
-  { name: 'Matcha Roll Cake', description: 'Delicate matcha sponge cake rolled with light white chocolate whipped cream.', price: 5.50, image: 'https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?auto=format&fit=crop&q=80&w=800' }
+  { categoryIndex: 0, name: 'Almond Croissant', description: 'Flaky, buttery croissant filled with sweet almond frangipane and topped with toasted almonds.', price: 450.00, image_url: 'https://images.unsplash.com/photo-1549903072-7e6e0bedb7fb?auto=format&fit=crop&q=80&w=800' },
+  { categoryIndex: 2, name: 'Black Forest Cake', description: 'Rich chocolate sponge cake layered with whipped cream and cherries, sprinkled with chocolate shavings.', price: 4500.00, image_url: 'https://images.unsplash.com/photo-1571115177098-24fa10bba689?auto=format&fit=crop&q=80&w=800' },
+  { categoryIndex: 1, name: 'Artisan Sourdough', description: 'Crusty loaf with a chewy, tangy interior naturally leavened over 48 hours.', price: 700.00, image_url: 'https://images.unsplash.com/photo-1589367920969-ab8e050bfc19?auto=format&fit=crop&q=80&w=800' },
+  { categoryIndex: 1, name: 'French Baguette', description: 'Classic crisp crust with a soft, airy interior. Baked fresh every morning.', price: 350.00, image_url: 'https://images.unsplash.com/photo-1597079910443-60c43fc4f729?auto=format&fit=crop&q=80&w=800' },
+  { categoryIndex: 0, name: 'Strawberry Tart', description: 'Fresh seasonal strawberries on a bed of vanilla pastry cream in a buttery shell.', price: 650.00, image_url: 'https://images.unsplash.com/photo-1519869325930-281384150729?auto=format&fit=crop&q=80&w=800' },
+  { categoryIndex: 2, name: 'Matcha Roll Cake', description: 'Delicate matcha sponge cake rolled with light white chocolate whipped cream.', price: 550.00, image_url: 'https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?auto=format&fit=crop&q=80&w=800' }
 ];
 
 const sampleContent = [
-  { key_name: 'hero_title', value: 'Artisan Bakes & Fresh Pastries' },
+  { key_name: 'hero_title', value: 'Welcome to Kathmandu Bakery' },
   { key_name: 'hero_subtitle', value: 'Discover the taste of authentic, handcrafted baked goods made with love and premium ingredients.' },
-  { key_name: 'about_us', value: 'At our bakery, we believe in the magic of slow fermentation and traditional techniques. Every pastry and loaf of bread is crafted by artisans who are passionate about bringing joy to your daily moments.' },
-  { key_name: 'contact_address', value: '456 Patisserie Blvd, Culinary Center' },
-  { key_name: 'contact_phone', value: '+1 (555) 987-6543' },
-  { key_name: 'contact_email', value: 'hello@artisanbakes.com' },
+  { key_name: 'about_us', value: 'At our bakery, we believe in the magic of slow fermentation and traditional techniques. Every pastry and loaf of bread is crafted by artisans who are passionate about bringing joy to your daily moments right here in Nepal.' },
+  { key_name: 'contact_address', value: 'Thamel, Kathmandu, Nepal' },
+  { key_name: 'contact_phone', value: '+977 9841234567' },
+  { key_name: 'contact_email', value: 'hello@kathmandubakery.com' },
   { key_name: 'announcement_enabled', value: 'true' },
   { key_name: 'announcement_title', value: 'Mother\'s Day Special!' },
   { key_name: 'announcement_text', value: 'Enjoy 20% off on all custom cakes. Pre-order now before we sell out!' },
@@ -51,13 +57,24 @@ async function seedDB() {
 
     console.log('Connected to the database. Clearing existing data...');
     await connection.query('DELETE FROM products');
+    await connection.query('DELETE FROM categories');
     await connection.query('DELETE FROM content');
+
+    console.log('Inserting sample categories...');
+    const catIds = [];
+    for (const cat of sampleCategories) {
+      const [res] = await connection.query(
+        'INSERT INTO categories (name, description) VALUES (?, ?)',
+        [cat.name, cat.description]
+      );
+      catIds.push(res.insertId);
+    }
 
     console.log('Inserting sample products...');
     for (const product of sampleProducts) {
       await connection.query(
-        'INSERT INTO products (name, description, price, image) VALUES (?, ?, ?, ?)',
-        [product.name, product.description, product.price, product.image]
+        'INSERT INTO products (category_id, name, description, price, image_url) VALUES (?, ?, ?, ?, ?)',
+        [catIds[product.categoryIndex], product.name, product.description, product.price, product.image_url]
       );
     }
 

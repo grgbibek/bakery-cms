@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { FileText, Package, ArrowLeft, Menu, X } from 'lucide-react';
+import { FileText, Package, ArrowLeft, Menu, X, Tags, LayoutDashboard } from 'lucide-react';
 
 const AdminLayout = () => {
   const location = useLocation();
@@ -33,11 +33,27 @@ const AdminLayout = () => {
         <nav className="sidebar-nav">
           <Link
             to="/admin"
-            className={`sidebar-link ${location.pathname === '/admin' ? 'active' : ''}`}
+            className={`sidebar-link ${location.pathname === '/admin' || location.pathname === '/admin/' ? 'active' : ''}`}
+            onClick={closeSidebar}
+          >
+            <LayoutDashboard size={20} />
+            Overview
+          </Link>
+          <Link
+            to="/admin/products"
+            className={`sidebar-link ${location.pathname === '/admin/products' ? 'active' : ''}`}
             onClick={closeSidebar}
           >
             <Package size={20} />
             Products
+          </Link>
+          <Link
+            to="/admin/categories"
+            className={`sidebar-link ${location.pathname === '/admin/categories' ? 'active' : ''}`}
+            onClick={closeSidebar}
+          >
+            <Tags size={20} />
+            Categories
           </Link>
           <Link
             to="/admin/content"

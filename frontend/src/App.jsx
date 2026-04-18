@@ -4,7 +4,9 @@ import Home from './pages/Home';
 import Services from './pages/Services';
 import AdminLayout from './admin/AdminLayout';
 import AdminProducts from './admin/AdminProducts';
+import AdminOrders from './admin/AdminOrders';
 import AdminContent from './admin/AdminContent';
+import AdminCategories from './admin/AdminCategories';
 import AdminLogin from './admin/AdminLogin';
 
 const ProtectedRoute = ({ children }) => {
@@ -25,7 +27,9 @@ function App() {
             <AdminLayout />
           </ProtectedRoute>
         }>
-          <Route index element={<AdminProducts />} />
+          <Route index element={<AdminOrders />} />
+          <Route path="products" element={<AdminProducts />} />
+          <Route path="categories" element={<AdminCategories />} />
           <Route path="content" element={<AdminContent />} />
         </Route>
       </Routes>

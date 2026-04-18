@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { contentService, productService } from '../services/api';
+import { contentService, productService, orderService } from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Gift } from 'lucide-react';
+import { X, Gift, ShoppingCart, Trash2, Plus, Minus, CheckCircle } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Chatbot from '../components/Chatbot';
 
@@ -9,12 +9,12 @@ import Chatbot from '../components/Chatbot';
 const defaultHeroImage = 'https://images.unsplash.com/photo-1549931319-a545dcf3bc73?auto=format&fit=crop&q=80&w=1600';
 
 const sampleContent = {
-  hero_title: 'Welcome to German Bakery',
+  hero_title: 'Welcome to Kathmandu Bakery',
   hero_subtitle: 'Authentic baked goods, pastries, and artisanal breads made with love.',
-  about_us: 'Our bakery brings the finest German recipes straight to your table. Every loaf is baked fresh daily by our master bakers.',
-  contact_address: '123 Pretzel Street, Munich, Germany',
-  contact_phone: '+49 123 456 7890',
-  contact_email: 'hello@germanbakery.com'
+  about_us: 'Our bakery brings the finest local and international recipes straight to your table. Every loaf is baked fresh daily by our master bakers in Nepal.',
+  contact_address: 'Thamel, Kathmandu, Nepal',
+  contact_phone: '+977 9841234567',
+  contact_email: 'hello@kathmandubakery.com'
 };
 
 const sampleProducts = [
@@ -27,6 +27,60 @@ const Home = () => {
   const [content, setContent] = useState({});
   const [products, setProducts] = useState([]);
   const [showAnnouncement, setShowAnnouncement] = useState(false);
+  
+  // Cart & Checkout State
+  const [cart, setCart] = useState([]);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [orderForm, setOrderForm] = useState({ name: '', email: '', phone: '', address: '' });
+  const [orderStatus, setOrderStatus] = useState({ loading: false, success: false, error: '' });
+
+  const addToCart = (product) => {
+    setCart(prev => {
+      const existing = prev.find(item => item.id === product.id);
+      if (existing) {
+        return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
+      }
+      return [...prev, { ...product, quantity: 1 }];
+    });
+    setIsSidebarOpen(true);
+  };
+
+  const updateQuantity = (id, delta) => {
+    setCart(prev => prev.map(item => {
+      if (item.id === id) {
+        const newQ = item.quantity + delta;
+        return newQ > 0 ? { ...item, quantity: newQ } : item;
+      }
+      return item;
+    }));
+  };
+
+  const removeFromCart = (id) => setCart(prev => prev.filter(item => item.id !== id));
+
+  const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+  const handleCheckoutSubmit = async (e) => {
+    e.preventDefault();
+    setOrderStatus({ loading: true, success: false, error: '' });
+    try {
+      const payload = {
+        customer: orderForm,
+        cartItems: cart.map(c => ({ id: c.id, quantity: c.quantity }))
+      };
+      await orderService.createOrder(payload);
+      setOrderStatus({ loading: false, success: true, error: '' });
+      setCart([]);
+      setTimeout(() => {
+        setIsCheckoutOpen(false);
+        setIsSidebarOpen(false);
+        setOrderStatus(prev => ({ ...prev, success: false }));
+        setOrderForm({ name: '', email: '', phone: '', address: '' });
+      }, 3000);
+    } catch (err) {
+      setOrderStatus({ loading: false, success: false, error: 'Failed to submit order. Please try again.' });
+    }
+  };
 
   useEffect(() => {
     // Fetch CMS Content
@@ -60,9 +114,9 @@ const Home = () => {
       });
   }, []);
 
-  const heroTitle = content.hero_title || 'Welcome to German Bakery';
+  const heroTitle = content.hero_title || 'Welcome to Kathmandu Bakery';
   const heroSubtitle = content.hero_subtitle || 'Authentic baked goods, pastries, and artisanal breads made with love.';
-  const aboutText = content.about_us || 'Experience the authentic taste of German baking traditions right in your neighborhood.';
+  const aboutText = content.about_us || 'Experience the authentic taste of freshly baked traditions right here in Nepal.';
 
   return (
     <div>
@@ -175,8 +229,8 @@ const Home = () => {
                   </div>
                   <p className="product-desc">{product.description}</p>
                   <div className="product-meta">
-                    <span className="product-price">NRs {Number(product.price).toFixed(2)}</span>
-                    <button className="btn-outline" style={{ padding: '0.5rem 1.2rem' }}>Order Now</button>
+                    <span className="product-price">Rs. {Number(product.price).toFixed(2)}</span>
+                    <button className="btn-outline" style={{ padding: '0.5rem 1.2rem' }} onClick={() => addToCart(product)}>Add to Cart</button>
                   </div>
                 </div>
               </motion.div>
@@ -195,9 +249,9 @@ const Home = () => {
           >
             <h2 className="section-title" style={{ marginBottom: '2rem' }}>Visit Us</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', fontSize: '1.2rem', color: 'var(--text-main)', maxWidth: '600px', margin: '0 auto', background: 'white', padding: '3rem', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
-              <p><strong>Address:</strong><br /> {content.contact_address || '123 Bakery Lane, Berlin'}</p>
-              <p><strong>Phone:</strong><br /> {content.contact_phone || '+49 123 456 7890'}</p>
-              <p><strong>Email:</strong><br /> {content.contact_email || 'hello@germanbakery.com'}</p>
+              <p><strong>Address:</strong><br /> {content.contact_address || 'Thamel, Kathmandu'}</p>
+              <p><strong>Phone:</strong><br /> {content.contact_phone || '+977 9841234567'}</p>
+              <p><strong>Email:</strong><br /> {content.contact_email || 'hello@kathmandubakery.com'}</p>
             </div>
           </motion.div>
         </div>
@@ -205,13 +259,159 @@ const Home = () => {
       
       <footer style={{ background: 'var(--secondary)', color: 'white', padding: '4rem 0', textAlign: 'center' }}>
         <div className="container">
-          <h2 style={{ color: 'white', fontFamily: 'Playfair Display', marginBottom: '1rem' }}>German Bakery</h2>
+          <h2 style={{ color: 'white', fontFamily: 'Playfair Display', marginBottom: '1rem' }}>Kathmandu Bakery</h2>
           <p style={{ color: '#a3a19e', marginBottom: '2rem' }}>Baking memories since 1990</p>
           <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '2rem', color: '#7E7B78' }}>
-            &copy; {new Date().getFullYear()} German Bakery. All rights reserved.
+            &copy; {new Date().getFullYear()} Kathmandu Bakery. All rights reserved.
           </div>
         </div>
       </footer>
+      
+      {/* Floating Cart Button */}
+      <motion.button
+        className="floating-cart-btn"
+        onClick={() => setIsSidebarOpen(true)}
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        style={{
+          position: 'fixed', bottom: '2rem', right: '2rem', background: 'var(--primary)', color: 'white',
+          border: 'none', borderRadius: '50%', width: '60px', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 10px 25px rgba(0,0,0,0.2)', cursor: 'pointer', zIndex: 99
+        }}
+      >
+        <ShoppingCart size={24} />
+        {cart.length > 0 && (
+          <span style={{ position: 'absolute', top: 0, right: 0, background: '#be185d', color: 'white', fontSize: '0.75rem', fontWeight: 'bold', width: '22px', height: '22px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transform: 'translate(20%, -20%)' }}>
+            {cart.reduce((sum, item) => sum + item.quantity, 0)}
+          </span>
+        )}
+      </motion.button>
+
+      {/* Cart Sidebar Overlay */}
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 0.5 }} exit={{ opacity: 0 }}
+              onClick={() => setIsSidebarOpen(false)}
+              style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'black', zIndex: 1000 }}
+            />
+            <motion.div 
+              initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'tween', duration: 0.3 }}
+              style={{ position: 'fixed', top: 0, right: 0, width: '100%', maxWidth: '400px', height: '100%', background: 'white', zIndex: 1001, display: 'flex', flexDirection: 'column', boxShadow: '-10px 0 25px rgba(0,0,0,0.1)' }}
+            >
+              <div style={{ padding: '1.5rem', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><ShoppingCart /> Your Cart</h2>
+                <button onClick={() => setIsSidebarOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}><X size={24} /></button>
+              </div>
+              
+              <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
+                {cart.length === 0 ? (
+                  <div style={{ textAlign: 'center', color: 'var(--text-muted)', marginTop: '2rem' }}>
+                    <ShoppingCart size={48} style={{ opacity: 0.2, margin: '0 auto 1rem' }} />
+                    <p>Your cart is empty.</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    {cart.map(item => (
+                      <div key={item.id} style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid #f5ece3', paddingBottom: '1rem' }}>
+                        <img src={item.image} alt={item.name} style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '8px' }} />
+                        <div style={{ flex: 1 }}>
+                          <h4 style={{ margin: '0 0 0.25rem' }}>{item.name}</h4>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontWeight: 'bold', color: 'var(--secondary)' }}>Rs. {Number(item.price).toFixed(2)}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#f5ece3', borderRadius: '4px', padding: '0.25rem' }}>
+                              <button onClick={() => updateQuantity(item.id, -1)} style={{ background: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', display: 'flex' }}><Minus size={14} /></button>
+                              <span style={{ fontSize: '0.9rem', width: '20px', textAlign: 'center', fontWeight: 'bold' }}>{item.quantity}</span>
+                              <button onClick={() => updateQuantity(item.id, 1)} style={{ background: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', display: 'flex' }}><Plus size={14} /></button>
+                            </div>
+                          </div>
+                        </div>
+                        <button onClick={() => removeFromCart(item.id)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'flex-start' }}><Trash2 size={18} /></button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              <div style={{ padding: '1.5rem', background: '#fcfbfa', borderTop: '1px solid #eee' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', fontSize: '1.2rem', fontWeight: 'bold' }}>
+                  <span>Total</span>
+                  <span>Rs. {cartTotal.toFixed(2)}</span>
+                </div>
+                <button 
+                  className="btn-primary" style={{ width: '100%', justifyContent: 'center' }} 
+                  disabled={cart.length === 0}
+                  onClick={() => setIsCheckoutOpen(true)}
+                >
+                  Proceed to Checkout
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Checkout Modal Overlay */}
+      <AnimatePresence>
+        {isCheckoutOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.6)', zIndex: 1002, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 30 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 30 }}
+              style={{ background: 'white', borderRadius: '16px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto' }}
+            >
+              {orderStatus.success ? (
+                <div style={{ padding: '4rem 2rem', textAlign: 'center' }}>
+                  <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring' }}>
+                    <CheckCircle size={64} color="#10b981" style={{ margin: '0 auto 1.5rem' }} />
+                  </motion.div>
+                  <h2 style={{ fontFamily: 'Playfair Display', color: 'var(--secondary)' }}>Order Confirmed!</h2>
+                  <p style={{ color: 'var(--text-muted)' }}>Thank you for ordering. We'll be in touch shortly!</p>
+                </div>
+              ) : (
+                <>
+                  <div style={{ padding: '1.5rem', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, background: 'white', zIndex: 10 }}>
+                    <h2 style={{ margin: 0 }}>Secure Checkout</h2>
+                    <button onClick={() => setIsCheckoutOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}><X size={24} /></button>
+                  </div>
+                  <form onSubmit={handleCheckoutSubmit} style={{ padding: '1.5rem' }}>
+                    {orderStatus.error && (
+                      <div style={{ padding: '1rem', background: '#fee2e2', color: '#b91c1c', borderRadius: '8px', marginBottom: '1.5rem' }}>
+                        {orderStatus.error}
+                      </div>
+                    )}
+                    <div className="form-group">
+                      <label>Full Name</label>
+                      <input type="text" className="form-control" required value={orderForm.name} onChange={e => setOrderForm({...orderForm, name: e.target.value})} placeholder="Ram Sharma" />
+                    </div>
+                    <div className="form-group">
+                      <label>Email Address</label>
+                      <input type="email" className="form-control" required value={orderForm.email} onChange={e => setOrderForm({...orderForm, email: e.target.value})} placeholder="ram@example.com" />
+                    </div>
+                    <div className="form-group">
+                      <label>Phone Number</label>
+                      <input type="tel" className="form-control" required value={orderForm.phone} onChange={e => setOrderForm({...orderForm, phone: e.target.value})} placeholder="+977 9841234567" />
+                    </div>
+                    <div className="form-group">
+                      <label>Delivery Address</label>
+                      <textarea className="form-control" rows="3" required value={orderForm.address} onChange={e => setOrderForm({...orderForm, address: e.target.value})} placeholder="Thamel, Kathmandu, Nepal..."></textarea>
+                    </div>
+                    <div style={{ marginTop: '2rem' }}>
+                      <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center' }} disabled={orderStatus.loading}>
+                        {orderStatus.loading ? 'Processing...' : `Pay Rs. ${cartTotal.toFixed(2)}`}
+                      </button>
+                    </div>
+                  </form>
+                </>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 };

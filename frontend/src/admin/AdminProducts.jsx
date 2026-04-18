@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { productService } from '../services/api';
+import { productService, categoryService } from '../services/api';
 import { Edit2, Trash2, Plus, X, Image as ImageIcon, Package } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const AdminProducts = () => {
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [formData, setFormData] = useState({ name: '', description: '', price: '', image: '', category: '' });
   const [editingId, setEditingId] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -24,8 +25,18 @@ const AdminProducts = () => {
     }
   };
 
+  const fetchCategories = async () => {
+    try {
+      const res = await categoryService.getCategories();
+      setCategories(Array.isArray(res.data) ? res.data : []);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   useEffect(() => {
     fetchProducts();
+    fetchCategories();
   }, []);
 
   const handleInputChange = (e) => {
@@ -128,7 +139,12 @@ const AdminProducts = () => {
                   </div>
                   <div className="form-group">
                     <label>Category</label>
-                    <input type="text" name="category" value={formData.category} onChange={handleInputChange} className="form-control" placeholder="e.g. Bread, Pastry..." required />
+                    <select name="category" value={formData.category} onChange={handleInputChange} className="form-control" required style={{ backgroundColor: 'white' }}>
+                      <option value="" disabled>Select a Category...</option>
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.name}>{c.name}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
                 
@@ -141,7 +157,7 @@ const AdminProducts = () => {
                     </div>
                   </div>
                   <div className="form-group">
-                    <label>Retail Price (NRs)</label>
+                    <label>Retail Price (Rs.)</label>
                     <input type="number" step="0.01" name="price" value={formData.price} onChange={handleInputChange} className="form-control" placeholder="0.00" required />
                   </div>
                 </div>
@@ -208,7 +224,7 @@ const AdminProducts = () => {
                       <td style={{ color: 'var(--text-muted)', fontSize: '0.9rem', maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {product.description}
                       </td>
-                      <td style={{ fontWeight: 700, color: 'var(--secondary)' }}>NRs {Number(product.price).toFixed(2)}</td>
+                      <td style={{ fontWeight: 700, color: 'var(--secondary)' }}>Rs. {Number(product.price).toFixed(2)}</td>
                       <td>
                         <div className="action-btns" style={{ justifyContent: 'flex-end' }}>
                           <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="btn-icon" onClick={() => handleEdit(product)} title="Edit"><Edit2 size={16} /></motion.button>
