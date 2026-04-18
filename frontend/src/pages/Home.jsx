@@ -50,11 +50,12 @@ const Home = () => {
     // Fetch Products
     productService.getProducts()
       .then(res => {
-        if (res.data.length === 0) throw new Error("Empty");
-        setProducts(res.data);
+        const data = Array.isArray(res.data) ? res.data : [];
+        if (data.length === 0) throw new Error('Empty');
+        setProducts(data);
       })
       .catch(err => {
-        console.log("Using sample products");
+        console.log('Using sample products');
         setProducts(sampleProducts);
       });
   }, []);
@@ -153,7 +154,7 @@ const Home = () => {
           <h2 className="section-title">Our Bakes</h2>
           
           <div className="products-grid">
-            {products.map((product, index) => (
+            {(Array.isArray(products) ? products : []).map((product, index) => (
               <motion.div 
                 key={product.id} 
                 className="product-card"
@@ -174,7 +175,7 @@ const Home = () => {
                   </div>
                   <p className="product-desc">{product.description}</p>
                   <div className="product-meta">
-                    <span className="product-price">${Number(product.price).toFixed(2)}</span>
+                    <span className="product-price">NRs {Number(product.price).toFixed(2)}</span>
                     <button className="btn-outline" style={{ padding: '0.5rem 1.2rem' }}>Order Now</button>
                   </div>
                 </div>

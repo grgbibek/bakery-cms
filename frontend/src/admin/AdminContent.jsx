@@ -36,6 +36,23 @@ const pageSections = [
       { key: 'announcement_title', label: 'Banner Title', type: 'text', help: 'E.g. Mother\'s Day Special!' },
       { key: 'announcement_text', label: 'Banner Message', type: 'textarea', help: 'Describe your offers or event.' }
     ]
+  },
+  {
+    title: 'Catering & Services Page',
+    description: 'Manage texts and images displayed on your custom orders page.',
+    fields: [
+      { key: 'services_hero_title', label: 'Page Headline', type: 'text', help: 'Main title at the top of the page.' },
+      { key: 'services_hero_subtitle', label: 'Page Subtitle', type: 'text', help: 'Short description below the headline.' },
+      { key: 'service_1_title', label: 'First Service Title', type: 'text', help: 'E.g., Custom Cakes' },
+      { key: 'service_1_desc', label: 'First Service Description', type: 'textarea', help: 'Details about the first service.' },
+      { key: 'service_1_img', label: 'First Service Image URL', type: 'text', help: 'Direct link to an image.' },
+      { key: 'service_2_title', label: 'Second Service Title', type: 'text', help: 'E.g., Wholesale Orders' },
+      { key: 'service_2_desc', label: 'Second Service Description', type: 'textarea', help: 'Details about the second service.' },
+      { key: 'service_2_img', label: 'Second Service Image URL', type: 'text', help: 'Direct link to an image.' },
+      { key: 'service_3_title', label: 'Third Service Title', type: 'text', help: 'E.g., Event Lunchboxes' },
+      { key: 'service_3_desc', label: 'Third Service Description', type: 'textarea', help: 'Details about the third service.' },
+      { key: 'service_3_img', label: 'Third Service Image URL', type: 'text', help: 'Direct link to an image.' }
+    ]
   }
 ];
 
@@ -109,18 +126,15 @@ const AdminContent = () => {
           {section.fields.map(({ key, label, type, help }, fieldIndex) => (
             <div 
               key={key} 
+              className="content-row"
               style={{ 
                 borderBottom: fieldIndex < section.fields.length - 1 ? '1px solid #E2DDD5' : 'none', 
-                padding: '2rem',
-                display: 'flex',
-                gap: '2rem',
-                alignItems: 'flex-start',
                 background: successKeys[key] ? 'rgba(22, 101, 52, 0.02)' : 'white',
                 transition: 'background 0.5s ease'
               }}
             >
               
-              <div style={{ flex: '0 0 300px' }}>
+              <div className="content-row__label">
                 <label style={{ fontSize: '1.15rem', fontWeight: 600, color: 'var(--secondary)', display: 'block', marginBottom: '0.5rem' }}>
                   {label}
                 </label>
@@ -132,7 +146,7 @@ const AdminContent = () => {
                 </p>
               </div>
               
-              <div style={{ flex: 1 }}>
+              <div className="content-row__input">
                 {type === 'textarea' ? (
                   <textarea 
                     className="form-control" 
@@ -160,7 +174,7 @@ const AdminContent = () => {
                 )}
               </div>
               
-              <div style={{ flex: '0 0 140px', textAlign: 'right' }}>
+              <div className="content-row__action">
                 <motion.button 
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}

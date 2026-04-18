@@ -18,7 +18,7 @@ const AdminProducts = () => {
   const fetchProducts = async () => {
     try {
       const res = await productService.getProducts();
-      setProducts(res.data);
+      setProducts(Array.isArray(res.data) ? res.data : []);
     } catch (error) {
       console.error(error);
     }
@@ -121,7 +121,7 @@ const AdminProducts = () => {
               </h3>
               
               <form onSubmit={handleSubmit}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '1.5rem' }}>
+                <div className="form-grid-2">
                   <div className="form-group">
                     <label>Product Name</label>
                     <input type="text" name="name" value={formData.name} onChange={handleInputChange} className="form-control" placeholder="e.g. Sourdough Loaf" required />
@@ -132,7 +132,7 @@ const AdminProducts = () => {
                   </div>
                 </div>
                 
-                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: '1.5rem' }}>
+                <div className="form-grid-2-1">
                   <div className="form-group">
                     <label>Image URL</label>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -141,7 +141,7 @@ const AdminProducts = () => {
                     </div>
                   </div>
                   <div className="form-group">
-                    <label>Retail Price ($)</label>
+                    <label>Retail Price (NRs)</label>
                     <input type="number" step="0.01" name="price" value={formData.price} onChange={handleInputChange} className="form-control" placeholder="0.00" required />
                   </div>
                 </div>
@@ -208,7 +208,7 @@ const AdminProducts = () => {
                       <td style={{ color: 'var(--text-muted)', fontSize: '0.9rem', maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {product.description}
                       </td>
-                      <td style={{ fontWeight: 700, color: 'var(--secondary)' }}>${Number(product.price).toFixed(2)}</td>
+                      <td style={{ fontWeight: 700, color: 'var(--secondary)' }}>NRs {Number(product.price).toFixed(2)}</td>
                       <td>
                         <div className="action-btns" style={{ justifyContent: 'flex-end' }}>
                           <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="btn-icon" onClick={() => handleEdit(product)} title="Edit"><Edit2 size={16} /></motion.button>

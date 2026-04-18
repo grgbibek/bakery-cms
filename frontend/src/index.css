@@ -15,6 +15,7 @@
   --radius-md: 12px;
   --radius-lg: 24px;
   --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --navbar-height: 72px;
 }
 
 * {
@@ -65,7 +66,7 @@ button {
   animation: fadeInUp 0.8s ease forwards;
 }
 
-/* Common UI Elements */
+/* ─── Common UI Elements ─────────────────────────────────────────────────── */
 .btn-primary {
   background: var(--primary);
   color: white;
@@ -101,20 +102,25 @@ button {
   color: white;
 }
 
-/* Navbar */
+/* ─── Navbar ─────────────────────────────────────────────────────────────── */
 .navbar {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
-  padding: 1.5rem 0;
+  padding: 1.2rem 0;
   background: rgba(253, 251, 248, 0.95);
   backdrop-filter: blur(10px);
   z-index: 1000;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  transition: box-shadow 0.3s;
 }
 
-.navbar .container {
+.navbar--scrolled {
+  box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+}
+
+.navbar__inner {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -122,11 +128,13 @@ button {
 
 .logo {
   font-family: 'Playfair Display', serif;
-  font-size: 1.8rem;
+  font-size: 1.6rem;
   font-weight: 700;
   color: var(--secondary);
+  flex-shrink: 0;
 }
 
+/* Desktop nav links */
 .nav-links {
   display: flex;
   gap: 2rem;
@@ -137,13 +145,54 @@ button {
   font-weight: 500;
   color: var(--text-main);
   transition: var(--transition);
+  white-space: nowrap;
 }
 
-.nav-links a:hover {
+.nav-links a:hover,
+.nav-links a.active {
   color: var(--primary);
 }
 
-/* Hero Section */
+/* Hamburger button — hidden on desktop */
+.nav-toggle {
+  display: none;
+  background: transparent;
+  border: none;
+  color: var(--text-main);
+  padding: 0.25rem;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.nav-toggle:hover {
+  color: var(--primary);
+}
+
+/* Mobile drawer */
+.nav-mobile {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: rgba(253, 251, 248, 0.98);
+  border-top: 1px solid var(--border-color);
+}
+
+.nav-mobile a {
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: var(--text-main);
+  border-bottom: 1px solid var(--border-color);
+  transition: background 0.2s, color 0.2s;
+}
+
+.nav-mobile a:hover,
+.nav-mobile a.active {
+  background: #f5ece3;
+  color: var(--primary);
+}
+
+/* ─── Hero Section ───────────────────────────────────────────────────────── */
 .hero {
   min-height: 100vh;
   display: flex;
@@ -183,119 +232,21 @@ button {
   box-shadow: var(--shadow-lg);
 }
 
-/* Admin Dashboard Styles */
-.admin-layout {
-  display: flex;
-  min-height: 100vh;
-  background: #f3f0eb;
-}
-
-.sidebar {
-  width: 280px;
-  background: var(--secondary);
-  color: white;
-  padding: 2rem;
-  display: flex;
-  flex-direction: column;
-}
-
-.sidebar h2 {
-  color: white;
-  margin-bottom: 3rem;
-  font-size: 1.5rem;
-}
-
-.sidebar-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.sidebar-link {
-  padding: 1rem 1.5rem;
-  border-radius: var(--radius-md);
-  color: #a3a19e;
-  transition: var(--transition);
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.sidebar-link:hover, .sidebar-link.active {
-  background: rgba(255,255,255,0.1);
-  color: white;
-}
-
-.admin-main {
-  flex: 1;
-  padding: 2rem;
-  overflow-y: auto;
-}
-
-.admin-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-}
-
-.admin-card {
-  background: var(--card-bg);
-  border-radius: var(--radius-lg);
-  padding: 2rem;
-  box-shadow: var(--shadow-md);
-  margin-bottom: 2rem;
-}
-
-/* Forms & Inputs */
-.form-group {
-  margin-bottom: 1.5rem;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-}
-
-.form-control {
-  width: 100%;
-  padding: 0.8rem 1rem;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  font-family: inherit;
-  font-size: 1rem;
-  transition: var(--transition);
-  background: #faf8f5;
-}
-
-.form-control:focus {
-  border-color: var(--primary);
-  background: #fff;
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(195, 132, 82, 0.1);
-}
-
-.form-action {
-  display: flex;
-  gap: 1rem;
-  margin-top: 2rem;
-}
-
-/* Products Grid */
-.products-section {
-  padding: 6rem 0;
-}
-
+/* ─── Section Titles ─────────────────────────────────────────────────────── */
 .section-title {
   text-align: center;
   font-size: 3rem;
   margin-bottom: 4rem;
 }
 
+/* ─── Products Grid ──────────────────────────────────────────────────────── */
+.products-section {
+  padding: 6rem 0;
+}
+
 .products-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 2.5rem;
 }
 
@@ -357,13 +308,160 @@ button {
   color: var(--primary);
 }
 
-/* Admin Table */
+/* ─── Admin Dashboard ────────────────────────────────────────────────────── */
+
+/* Mobile-only top bar */
+.admin-topbar {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 56px;
+  background: var(--secondary);
+  color: white;
+  align-items: center;
+  padding: 0 1.5rem;
+  gap: 1rem;
+  z-index: 1200;
+}
+
+.admin-menu-btn {
+  background: transparent;
+  border: none;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.admin-topbar-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.2rem;
+  color: white;
+}
+
+/* Sidebar overlay (mobile) */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 1100;
+}
+
+.admin-layout {
+  display: flex;
+  min-height: 100vh;
+  background: #f3f0eb;
+}
+
+.sidebar {
+  width: 280px;
+  background: var(--secondary);
+  color: white;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.sidebar h2 {
+  color: white;
+  margin-bottom: 3rem;
+  font-size: 1.5rem;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.sidebar-link {
+  padding: 1rem 1.5rem;
+  border-radius: var(--radius-md);
+  color: #a3a19e;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.sidebar-link:hover,
+.sidebar-link.active {
+  background: rgba(255,255,255,0.1);
+  color: white;
+}
+
+.admin-main {
+  flex: 1;
+  padding: 2rem;
+  overflow-y: auto;
+  min-width: 0; /* prevent overflow */
+}
+
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.admin-card {
+  background: var(--card-bg);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  box-shadow: var(--shadow-md);
+  margin-bottom: 2rem;
+}
+
+/* ─── Forms & Inputs ─────────────────────────────────────────────────────── */
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.form-control {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-size: 1rem;
+  transition: var(--transition);
+  background: #faf8f5;
+}
+
+.form-control:focus {
+  border-color: var(--primary);
+  background: #fff;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(195, 132, 82, 0.1);
+}
+
+.form-action {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+  flex-wrap: wrap;
+}
+
+/* ─── Admin Table ────────────────────────────────────────────────────────── */
 .admin-table {
   width: 100%;
   border-collapse: collapse;
 }
 
-.admin-table th, .admin-table td {
+.admin-table th,
+.admin-table td {
   padding: 1.2rem;
   text-align: left;
   border-bottom: 1px solid var(--border-color);
@@ -409,9 +507,240 @@ button {
   color: white;
 }
 
+/* ─── Utilities ──────────────────────────────────────────────────────────── */
 .spin {
   animation: spin 1s linear infinite;
 }
-@keyframes spin { 
-  100% { transform: rotate(360deg); } 
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
+
+/* ─── Table responsive wrapper ───────────────────────────────────────────── */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ─── AdminContent content-row layout ───────────────────────────────────── */
+.content-row {
+  padding: 2rem;
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+}
+
+.content-row__label { flex: 0 0 300px; }
+.content-row__input { flex: 1; min-width: 0; }
+.content-row__action { flex: 0 0 140px; text-align: right; }
+
+/* ─── AdminProducts form grids ───────────────────────────────────────────── */
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1.5rem;
+}
+
+.form-grid-2-1 {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 1.5rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE BREAKPOINTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Tablet (≤ 1024px) ───────────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .hero h1 { font-size: 3.5rem; }
+  .hero-content { padding-right: 2rem; }
+  .hero-image-wrapper { height: 480px; }
+  .section-title { font-size: 2.5rem; }
+  .sidebar { width: 240px; }
+}
+
+/* ── Mobile (≤ 768px) ────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Container */
+  .container { padding: 0 1.25rem; }
+
+  /* ── Navbar ── */
+  .nav-links { display: none; }        /* hide desktop links */
+  .nav-toggle { display: flex; }       /* show hamburger */
+
+  /* ── Hero ── */
+  .hero {
+    padding-top: 4.5rem;
+    min-height: auto;
+    padding-bottom: 3rem;
+  }
+
+  .hero .container {
+    flex-direction: column !important;
+    gap: 2.5rem !important;
+    text-align: center;
+  }
+
+  .hero-content {
+    padding-right: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .hero h1 {
+    font-size: 2.6rem;
+    margin-bottom: 1rem;
+  }
+
+  .hero p {
+    font-size: 1.1rem;
+    margin-bottom: 2rem;
+    max-width: 100%;
+  }
+
+  .hero-image-wrapper {
+    width: 100%;
+    height: 300px;
+  }
+
+  /* ── Section titles ── */
+  .section-title { font-size: 2rem; margin-bottom: 2.5rem; }
+
+  /* ── About / contact sections ── */
+  #about { padding: 4rem 0 !important; }
+  #contact { padding: 4rem 0 !important; }
+
+  #contact .container > div > div {
+    padding: 2rem !important;
+  }
+
+  /* ── Products ── */
+  .products-section { padding: 4rem 0; }
+  .products-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  .product-img { height: 220px; }
+
+  /* ── Product meta wrap ── */
+  .product-meta {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  /* ── Services hero ── */
+  .services-hero h1 { font-size: 2.4rem !important; }
+  .services-hero p  { font-size: 1rem !important; }
+
+  /* ── Services cards ── */
+  .service-card {
+    flex-direction: column !important;
+  }
+  .service-card-img { min-height: 240px !important; }
+  .service-card-body { padding: 2rem !important; }
+
+  /* ── Footer ── */
+  footer { padding: 3rem 0 !important; }
+
+  /* ── Admin ── */
+  .admin-topbar { display: flex; }
+  .sidebar-overlay { display: block; }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: -280px;
+    height: 100%;
+    width: 260px;
+    z-index: 1150;
+    transition: left 0.3s ease;
+    padding-top: 1.5rem;
+  }
+
+  .sidebar--open {
+    left: 0;
+  }
+
+  .admin-layout {
+    flex-direction: column;
+  }
+
+  .admin-main {
+    padding: 1.5rem 1rem;
+    margin-top: 56px; /* height of mobile topbar */
+  }
+
+  .admin-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .admin-card { padding: 1.5rem; }
+
+  .form-action { flex-direction: column; }
+  .form-action button { width: 100%; }
+
+  /* ── AdminContent rows ── */
+  .content-row {
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.5rem;
+  }
+  .content-row__label { flex: none; width: 100%; }
+  .content-row__input { flex: none; width: 100%; }
+  .content-row__action {
+    flex: none;
+    width: 100%;
+    text-align: left;
+  }
+  .content-row__action button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* ── AdminProducts form grids ── */
+  .form-grid-2,
+  .form-grid-2-1 {
+    grid-template-columns: 1fr;
+  }
+
+  /* ── Services hero height ── */
+  .services-hero { height: auto !important; min-height: 300px !important; }
+
+  /* ── Chatbot ── */
+  .chatbot-window {
+    width: calc(100vw - 2rem) !important;
+    max-width: 360px !important;
+    right: 0 !important;
+    left: 0 !important;
+    margin: 0 auto !important;
+    bottom: 5rem !important;
+  }
+}
+
+/* ── Small phones (≤ 480px) ──────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .logo { font-size: 1.4rem; }
+
+  .hero h1 { font-size: 2.1rem; }
+  .hero p  { font-size: 1rem; }
+  .hero-image-wrapper { height: 240px; }
+
+  .section-title { font-size: 1.75rem; }
+
+  .btn-primary,
+  .btn-outline {
+    padding: 0.75rem 1.5rem;
+    font-size: 0.95rem;
+  }
+
+  .product-info { padding: 1.5rem; }
+  .product-title { font-size: 1.3rem; }
+
+  .admin-card { padding: 1.25rem; }
+
+  .content-row { padding: 1.25rem; }
+  .services-hero h1 { font-size: 1.8rem !important; }
 }

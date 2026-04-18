@@ -10,7 +10,7 @@ build/
 *.dll
 *.so
 *.dylib
-
+deploy/
 # Environment variables
 .env
 .env.local

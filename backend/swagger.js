@@ -11,6 +11,10 @@ const options = {
     },
     servers: [
       {
+        url: '/',
+        description: 'Current Environment',
+      },
+      {
         url: 'http://localhost:5000',
         description: 'Development Server',
       },

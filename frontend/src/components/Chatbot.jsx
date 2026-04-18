@@ -52,11 +52,12 @@ const Chatbot = ({ phone = '' }) => {
   const glowColor = 'rgba(244, 63, 94, 0.5)';
 
   return (
-    <div style={{ position: 'fixed', bottom: '2rem', right: '2rem', zIndex: 9000, display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+    <div style={{ position: 'fixed', bottom: '1.5rem', right: '1.5rem', zIndex: 9000, display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
 
       <AnimatePresence>
         {isOpen && (
           <motion.div
+            className="chatbot-window"
             initial={{ opacity: 0, y: 50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.9 }}

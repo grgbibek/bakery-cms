@@ -26,7 +26,18 @@ const sampleContent = [
   { key_name: 'contact_email', value: 'hello@artisanbakes.com' },
   { key_name: 'announcement_enabled', value: 'true' },
   { key_name: 'announcement_title', value: 'Mother\'s Day Special!' },
-  { key_name: 'announcement_text', value: 'Enjoy 20% off on all custom cakes. Pre-order now before we sell out!' }
+  { key_name: 'announcement_text', value: 'Enjoy 20% off on all custom cakes. Pre-order now before we sell out!' },
+  { key_name: 'services_hero_title', value: 'Catering & Custom Orders' },
+  { key_name: 'services_hero_subtitle', value: 'Elevating your special moments and corporate events with artisanal excellence.' },
+  { key_name: 'service_1_title', value: 'Custom Celebration Cakes' },
+  { key_name: 'service_1_desc', value: 'From elegant wedding tiers to playful birthday designs, our master bakers craft bespoke cakes tailored precisely to your vision and taste. We use only premium ingredients to ensure it tastes as spectacular as it looks.' },
+  { key_name: 'service_1_img', value: 'https://images.unsplash.com/photo-1621303837174-89787a7d4729?auto=format&fit=crop&q=80&w=800' },
+  { key_name: 'service_2_title', value: 'Wholesale & Large Orders' },
+  { key_name: 'service_2_desc', value: 'Supplying local cafes, restaurants, and corporate cafeterias. We scale our authentic artisanal baking processes to provide you with consistent, high-quality bulk orders of pastries, breads, and buns.' },
+  { key_name: 'service_2_img', value: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&q=80&w=800' },
+  { key_name: 'service_3_title', value: 'Event Lunchboxes' },
+  { key_name: 'service_3_desc', value: 'Elevate your next corporate off-site or private party with our gourmet lunchbox catering. Packed individually with fresh artisan sandwiches, seasonal salads, and signature sweet treats for a seamless dining experience.' },
+  { key_name: 'service_3_img', value: 'https://images.unsplash.com/photo-1505253758473-96b7015fcd40?auto=format&fit=crop&q=80&w=800' }
 ];
 
 async function seedDB() {
