@@ -24,12 +24,12 @@ const sampleProducts = [
 ];
 
 const sampleContent = [
-  { key_name: 'hero_title', value: 'Welcome to Kathmandu Bakery' },
+  { key_name: 'hero_title', value: 'Welcome to German Bakery' },
   { key_name: 'hero_subtitle', value: 'Discover the taste of authentic, handcrafted baked goods made with love and premium ingredients.' },
   { key_name: 'about_us', value: 'At our bakery, we believe in the magic of slow fermentation and traditional techniques. Every pastry and loaf of bread is crafted by artisans who are passionate about bringing joy to your daily moments right here in Nepal.' },
-  { key_name: 'contact_address', value: 'Thamel, Kathmandu, Nepal' },
-  { key_name: 'contact_phone', value: '+977 9841234567' },
-  { key_name: 'contact_email', value: 'hello@kathmandubakery.com' },
+  { key_name: 'contact_address', value: 'Golfutar, Kathmandu, Nepal' },
+  { key_name: 'contact_phone', value: '+977 9841543104' },
+  { key_name: 'contact_email', value: 'service@bakerynepal.com' },
   { key_name: 'announcement_enabled', value: 'true' },
   { key_name: 'announcement_title', value: 'Mother\'s Day Special!' },
   { key_name: 'announcement_text', value: 'Enjoy 20% off on all custom cakes. Pre-order now before we sell out!' },

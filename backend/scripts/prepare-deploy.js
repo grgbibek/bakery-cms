@@ -17,7 +17,9 @@ const include = [
   'server.js',
   'swagger.js',
   'package.json',
-  '.env'
+  '.env',
+  'database.json',
+  'migrations'
 ];
 
 async function prepareDeploy() {
