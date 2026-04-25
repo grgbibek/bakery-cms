@@ -1,68 +1,67 @@
-import nodemailer from 'nodemailer';
-import twilio from 'twilio';
-
 // Use safely parsed Env Vars
-const EMAIL_USER = process.env.EMAIL_USER;
-const EMAIL_PASS = process.env.EMAIL_PASS;
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID;
+const EMAILJS_TEMPLATE_ID = process.env.EMAILJS_TEMPLATE_ID;
+const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY;
+const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY;
 
-const TWILIO_SID = process.env.TWILIO_ACCOUNT_SID;
-const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
-const TWILIO_WHATSAPP_SENDER = process.env.TWILIO_WHATSAPP_SENDER; // e.g. 'whatsapp:+14155238886'
-const ADMIN_WHATSAPP_NUMBER = process.env.ADMIN_WHATSAPP_NUMBER; // e.g. 'whatsapp:+9779841234567'
+const sendEmailJSEmail = async (toEmail, toName, title, messageBody) => {
+  if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY || !EMAILJS_PRIVATE_KEY) {
+    console.log('[DRY RUN] Email JS Missing Credentials (Did you add your Private Key?). Email Body:', messageBody);
+    return;
+  }
 
-let transporter = null;
-if (EMAIL_USER && EMAIL_PASS) {
-  transporter = nodemailer.createTransport({
-    service: 'gmail', // Standard configuration for Gmail
-    auth: {
-      user: EMAIL_USER,
-      pass: EMAIL_PASS,
-    },
-  });
-}
+  try {
+    const payload = {
+      service_id: EMAILJS_SERVICE_ID,
+      template_id: EMAILJS_TEMPLATE_ID,
+      user_id: EMAILJS_PUBLIC_KEY,
+      accessToken: EMAILJS_PRIVATE_KEY,
+      template_params: {
+        name: toName,
+        email: toEmail,
+        reply_to: 'no-reply@bakerycms.com',
+        title: title,
+        message: messageBody,
+        to_name: toName
+      }
+    };
 
-let twilioClient = null;
-if (TWILIO_SID && TWILIO_AUTH_TOKEN) {
-  twilioClient = twilio(TWILIO_SID, TWILIO_AUTH_TOKEN);
-}
+    // Node 18+ has built-in fetch
+    const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
 
-export const sendOrderNotificationToAdmin = async (orderId, customer, cartItems, totalAmount) => {
+    if (response.ok) {
+      console.log(`Email successfully sent to ${toEmail}`);
+    } else {
+      const errorText = await response.text();
+      console.error('Failed to send email:', errorText);
+    }
+  } catch (error) {
+    console.error('EmailJS request error:', error);
+  }
+};
+
+export const sendOrderCreatedEmailToCustomer = async (orderId, trackingId, customer, cartItems, totalAmount) => {
   const itemDetails = cartItems.map(item => `- ${item.quantity}x ${item.name} (Rs. ${item.price_at_purchase})`).join('\n');
-  const messageBody = `🍞 New Bakery Order Received!\n\nOrder ID: #${orderId}\nCustomer: ${customer.name}\nPhone: ${customer.phone}\nAddress: ${customer.address}\n\nItems:\n${itemDetails}\n\nTotal: Rs. ${totalAmount}`;
+  const messageBody = `Thank you for your order!\n\nOrder ID: #${orderId}\nTracking ID: ${trackingId}\n\nItems:\n${itemDetails}\n\nTotal: Rs. ${totalAmount}\n\nWe have received your order and it is currently Pending. You can track your order using your Tracking ID on our website.`;
 
-  // 1. Send Email Notification
-  if (transporter && ADMIN_EMAIL) {
-    try {
-      await transporter.sendMail({
-        from: `"Bakery CMS" <${EMAIL_USER}>`,
-        to: ADMIN_EMAIL,
-        subject: `New Order #${orderId} from ${customer.name}`,
-        text: messageBody,
-      });
-      console.log('Admin email notification sent successfully.');
-    } catch (error) {
-      console.error('Failed to send admin email notification:', error.message);
-    }
-  } else {
-    console.warn('⚠️ EMAIL_USER, EMAIL_PASS, or ADMIN_EMAIL not set. Skipping email notification.');
-    console.log('[DRY RUN] Email Body:', messageBody);
-  }
+  await sendEmailJSEmail(customer.email, customer.name, `Order Received - #${orderId}`, messageBody);
+};
 
-  // 2. Send WhatsApp Notification
-  if (twilioClient && TWILIO_WHATSAPP_SENDER && ADMIN_WHATSAPP_NUMBER) {
-    try {
-      await twilioClient.messages.create({
-        from: TWILIO_WHATSAPP_SENDER,
-        to: ADMIN_WHATSAPP_NUMBER,
-        body: messageBody,
-      });
-      console.log('Admin WhatsApp notification sent successfully.');
-    } catch (error) {
-      console.error('Failed to send Admin WhatsApp notification:', error.message);
-    }
-  } else {
-    console.warn('⚠️ TWILIO Credentials or WhatsApp numbers not fully set. Skipping WhatsApp notification.');
-    console.log('[DRY RUN] WhatsApp Body:', messageBody);
-  }
+export const sendOrderConfirmationToCustomer = async (order) => {
+  const messageBody = `Great news! Your Bakery order #${order.id} has been CONFIRMED.\n\nTotal: Rs. ${order.total_amount}\nTracking ID: ${order.tracking_id}\n\nWe will process it shortly!`;
+
+  await sendEmailJSEmail(order.customer_email, order.customer_name, `Your Order #${order.id} is Confirmed!`, messageBody);
+};
+
+export const sendOrderCancellationToCustomer = async (order, notes) => {
+  const noteSection = notes ? `\n\nAdmin Note: ${notes}` : '';
+  const messageBody = `We're sorry, but your Bakery order #${order.id} has been CANCELLED.${noteSection}\n\nTotal: Rs. ${order.total_amount}\nTracking ID: ${order.tracking_id}\n\nPlease contact us if you have any questions.`;
+
+  await sendEmailJSEmail(order.customer_email, order.customer_name, `Your Order #${order.id} has been Cancelled`, messageBody);
 };

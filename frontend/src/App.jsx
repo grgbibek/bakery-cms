@@ -8,6 +8,7 @@ import AdminOrders from './admin/AdminOrders';
 import AdminContent from './admin/AdminContent';
 import AdminCategories from './admin/AdminCategories';
 import AdminLogin from './admin/AdminLogin';
+import TrackOrder from './pages/TrackOrder';
 
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('adminToken');
@@ -21,6 +22,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/services" element={<Services />} />
+        <Route path="/track-order" element={<TrackOrder />} />
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin" element={
           <ProtectedRoute>

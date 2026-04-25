@@ -65,6 +65,8 @@ export const orderService = {
   createOrder: (orderPayload) => api.post('/orders', orderPayload),
   getOrders: () => api.get('/orders'),
   getOrderStats: () => api.get('/orders/stats'),
+  trackOrder: (trackingId) => api.get(`/orders/track/${trackingId}`),
+  updateOrderStatus: (id, status, notes) => api.put(`/orders/${id}/status`, { status, notes }),
 };
 
 export default api;

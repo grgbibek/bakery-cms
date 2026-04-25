@@ -1,5 +1,6 @@
 import pool from '../config/db.js';
-import { sendOrderNotificationToAdmin } from '../utils/notifier.js';
+import { sendOrderCreatedEmailToCustomer, sendOrderConfirmationToCustomer, sendOrderCancellationToCustomer } from '../utils/notifier.js';
+import { randomUUID } from 'crypto';
 
 export const createOrder = async (req, res) => {
   const { customer, cartItems } = req.body;
@@ -36,10 +37,13 @@ export const createOrder = async (req, res) => {
       });
     }
 
+    // Generate a unique tracking ID
+    const trackingId = randomUUID();
+
     // Insert the main order
     const [orderResult] = await connection.query(
-      'INSERT INTO orders (customer_name, customer_email, customer_phone, customer_address, total_amount) VALUES (?, ?, ?, ?, ?)',
-      [customer.name, customer.email, customer.phone, customer.address, totalAmount]
+      'INSERT INTO orders (tracking_id, customer_name, customer_email, customer_phone, customer_address, total_amount) VALUES (?, ?, ?, ?, ?, ?)',
+      [trackingId, customer.name, customer.email, customer.phone, customer.address, totalAmount]
     );
 
     const orderId = orderResult.insertId;
@@ -55,9 +59,9 @@ export const createOrder = async (req, res) => {
     await connection.commit();
     
     // Fire off notifications asynchronously (do not await)
-    sendOrderNotificationToAdmin(orderId, customer, finalCartItems, totalAmount).catch(console.error);
+    sendOrderCreatedEmailToCustomer(orderId, trackingId, customer, finalCartItems, totalAmount).catch(console.error);
 
-    res.status(201).json({ message: 'Order successfully created', orderId });
+    res.status(201).json({ message: 'Order successfully created', orderId, trackingId });
 
   } catch (error) {
     await connection.rollback();
@@ -74,6 +78,47 @@ export const getOrders = async (req, res) => {
     res.json(rows);
   } catch (error) {
     res.status(500).json({ message: 'Failed to retrieve orders' });
+  }
+};
+
+export const updateOrderStatus = async (req, res) => {
+  const { id } = req.params;
+  const { status, notes } = req.body;
+
+  if (!status) {
+    return res.status(400).json({ message: 'Status is required' });
+  }
+
+  try {
+    let query = 'UPDATE orders SET status = ? WHERE id = ?';
+    let params = [status, id];
+
+    if (notes !== undefined) {
+      query = 'UPDATE orders SET status = ?, admin_notes = ? WHERE id = ?';
+      params = [status, notes, id];
+    }
+
+    const [result] = await pool.query(query, params);
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    const [orders] = await pool.query('SELECT * FROM orders WHERE id = ?', [id]);
+    const order = orders[0];
+
+    if (order) {
+      if (status === 'confirmed') {
+        sendOrderConfirmationToCustomer(order).catch(console.error);
+      } else if (status === 'cancelled') {
+        sendOrderCancellationToCustomer(order, notes).catch(console.error);
+      }
+    }
+
+    res.json({ message: 'Order status updated successfully' });
+  } catch (error) {
+    console.error('Update status error:', error);
+    res.status(500).json({ message: 'Failed to update order status' });
   }
 };
 
@@ -96,5 +141,52 @@ export const getOrderStats = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: 'Failed to calculate statistics' });
+  }
+};
+
+export const trackOrder = async (req, res) => {
+  const { trackingId } = req.params;
+
+  if (!trackingId) {
+    return res.status(400).json({ message: 'Tracking ID is required' });
+  }
+
+  try {
+    // Fetch the order
+    const [orders] = await pool.query(
+      'SELECT id, tracking_id, customer_name, customer_email, status, total_amount, created_at FROM orders WHERE tracking_id = ?',
+      [trackingId]
+    );
+
+    if (orders.length === 0) {
+      return res.status(404).json({ message: 'Order not found. Please check your tracking ID.' });
+    }
+
+    const order = orders[0];
+
+    // Fetch the order items with product names
+    const [items] = await pool.query(
+      `SELECT oi.quantity, oi.price_at_purchase, p.name AS product_name
+       FROM order_items oi
+       JOIN products p ON oi.product_id = p.id
+       WHERE oi.order_id = ?`,
+      [order.id]
+    );
+
+    res.json({
+      trackingId: order.tracking_id,
+      customerName: order.customer_name,
+      status: order.status,
+      totalAmount: Number(order.total_amount),
+      createdAt: order.created_at,
+      items: items.map(i => ({
+        name: i.product_name,
+        quantity: i.quantity,
+        price: Number(i.price_at_purchase)
+      }))
+    });
+  } catch (error) {
+    console.error('Track order error:', error);
+    res.status(500).json({ message: 'Server error while fetching order' });
   }
 };

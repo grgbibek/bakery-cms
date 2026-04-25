@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, MapPin } from 'lucide-react';
 
 const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -39,6 +39,23 @@ const Navbar = () => {
           <a href="/#about" onClick={closeMenu}>About</a>
           <a href="/#menu" onClick={closeMenu}>Menu</a>
           <a href="/#contact" onClick={closeMenu}>Contact</a>
+          <NavLink
+            to="/track-order"
+            onClick={closeMenu}
+            style={({ isActive }) => ({
+              color: isActive ? 'var(--primary)' : 'var(--primary)',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              padding: '0.4rem 1rem',
+              background: 'rgba(195,132,82,0.1)',
+              borderRadius: '50px',
+              transition: 'background 0.2s',
+            })}
+          >
+            <MapPin size={15} /> Track Order
+          </NavLink>
         </motion.nav>
 
         {/* Hamburger button */}
@@ -67,6 +84,9 @@ const Navbar = () => {
             <a href="/#about" onClick={closeMenu}>About</a>
             <a href="/#menu" onClick={closeMenu}>Menu</a>
             <a href="/#contact" onClick={closeMenu}>Contact</a>
+            <NavLink to="/track-order" onClick={closeMenu} style={{ color: 'var(--primary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <MapPin size={15} /> Track Order
+            </NavLink>
           </motion.nav>
         )}
       </AnimatePresence>

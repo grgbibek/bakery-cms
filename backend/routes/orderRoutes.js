@@ -1,5 +1,5 @@
 import express from 'express';
-import { createOrder, getOrders, getOrderStats } from '../controllers/orderController.js';
+import { createOrder, getOrders, getOrderStats, trackOrder, updateOrderStatus } from '../controllers/orderController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -77,5 +77,58 @@ router.get('/', protect, getOrders);
  *         description: Order statistics object
  */
 router.get('/stats', protect, getOrderStats);
+
+/**
+ * @swagger
+ * /api/orders/track/{trackingId}:
+ *   get:
+ *     summary: Track an order by its tracking ID (public)
+ *     tags: [Orders]
+ *     parameters:
+ *       - in: path
+ *         name: trackingId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: UUID tracking ID returned at checkout
+ *     responses:
+ *       200:
+ *         description: Order tracking details
+ *       404:
+ *         description: Order not found
+ */
+router.get('/track/:trackingId', trackOrder);
+
+/**
+ * @swagger
+ * /api/orders/{id}/status:
+ *   put:
+ *     summary: Update order status
+ *     tags: [Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Order ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               status:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Status updated
+ *       404:
+ *         description: Order not found
+ */
+router.put('/:id/status', protect, updateOrderStatus);
 
 export default router;
