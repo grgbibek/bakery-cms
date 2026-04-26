@@ -29,7 +29,14 @@ app.use(morgan('dev'));
 
 // CORS configuration
 const corsOptions = {
-  origin: config.clientUrl,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, etc.) and any localhost port in dev
+    if (!origin || origin.startsWith('http://localhost') || origin === config.clientUrl) {
+      callback(null, true);
+    } else {
+      callback(null, config.clientUrl === '*' ? true : origin === config.clientUrl);
+    }
+  },
   credentials: true,
   optionsSuccessStatus: 200
 };
@@ -37,8 +44,11 @@ app.use(cors(corsOptions));
 
 app.use(express.json({ limit: '10mb' }));
 
-// Static folder (for uploads)
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Static folder (for uploads) — allow cross-origin image loading from the frontend
+app.use('/uploads', (req, res, next) => {
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+}, express.static(path.join(__dirname, 'uploads')));
 
 // Serve public static files (if any)
 app.use(express.static(path.join(__dirname, 'public')));

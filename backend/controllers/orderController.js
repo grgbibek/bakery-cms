@@ -19,7 +19,7 @@ export const createOrder = async (req, res) => {
 
     // Calculate secure total amount backed by DB products
     for (const item of cartItems) {
-      const [rows] = await connection.query('SELECT name, price FROM products WHERE id = ?', [item.id]);
+      const [rows] = await connection.query('SELECT name, price, image_thumb_url FROM products WHERE id = ?', [item.id]);
       if (rows.length === 0) {
         throw new Error(`Product ID ${item.id} not found`);
       }
@@ -33,7 +33,8 @@ export const createOrder = async (req, res) => {
         product_id: item.id,
         name: rows[0].name,
         quantity,
-        price_at_purchase: realPrice
+        price_at_purchase: realPrice,
+        image_thumb: rows[0].image_thumb_url
       });
     }
 
@@ -164,9 +165,9 @@ export const trackOrder = async (req, res) => {
 
     const order = orders[0];
 
-    // Fetch the order items with product names
+    // Fetch the order items with product names and thumbnails
     const [items] = await pool.query(
-      `SELECT oi.quantity, oi.price_at_purchase, p.name AS product_name
+      `SELECT oi.quantity, oi.price_at_purchase, p.name AS product_name, p.image_url AS image, p.image_thumb_url AS image_thumb
        FROM order_items oi
        JOIN products p ON oi.product_id = p.id
        WHERE oi.order_id = ?`,
@@ -182,7 +183,9 @@ export const trackOrder = async (req, res) => {
       items: items.map(i => ({
         name: i.product_name,
         quantity: i.quantity,
-        price: Number(i.price_at_purchase)
+        price: Number(i.price_at_purchase),
+        image: i.image || null,
+        image_thumb: i.image_thumb || null
       }))
     });
   } catch (error) {

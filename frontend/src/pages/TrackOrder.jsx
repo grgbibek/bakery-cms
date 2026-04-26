@@ -226,17 +226,36 @@ const TrackOrder = () => {
                 <div className="track-items-card">
                   <h3 style={{ fontFamily: 'Playfair Display', marginBottom: '1.25rem', fontSize: '1.3rem' }}>Order Items</h3>
                   <div className="track-items-list">
-                    {order.items.map((item, i) => (
-                      <div key={i} className="track-item-row">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <div className="track-item-qty">{item.quantity}×</div>
-                          <span style={{ fontWeight: 500 }}>{item.name}</span>
+                    {order.items.map((item, i) => {
+                      const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                      const thumbSrc = item.image_thumb
+                        ? (item.image_thumb.startsWith('http') ? item.image_thumb : `${backendUrl}${item.image_thumb}`)
+                        : null;
+                      return (
+                        <div key={i} className="track-item-row">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            {thumbSrc ? (
+                              <img
+                                src={thumbSrc}
+                                alt={item.name}
+                                style={{ width: '48px', height: '48px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0, border: '1px solid var(--border)' }}
+                              />
+                            ) : (
+                              <div style={{ width: '48px', height: '48px', borderRadius: '8px', background: 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid var(--border)', fontSize: '1.2rem' }}>
+                                🧁
+                              </div>
+                            )}
+                            <div>
+                              <div className="track-item-qty" style={{ display: 'inline-block', marginBottom: '2px' }}>{item.quantity}×</div>
+                              <span style={{ fontWeight: 500, display: 'block' }}>{item.name}</span>
+                            </div>
+                          </div>
+                          <span style={{ fontWeight: 600, color: 'var(--primary)' }}>
+                            Rs. {(item.price * item.quantity).toFixed(2)}
+                          </span>
                         </div>
-                        <span style={{ fontWeight: 600, color: 'var(--primary)' }}>
-                          Rs. {(item.price * item.quantity).toFixed(2)}
-                        </span>
-                      </div>
-                    ))}
+                      );
+                    })}
                     <div className="track-total-row">
                       <span style={{ fontWeight: 700 }}>Total</span>
                       <span style={{ fontWeight: 700, color: 'var(--primary)', fontSize: '1.1rem' }}>
