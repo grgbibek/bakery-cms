@@ -12,7 +12,7 @@ const __dirname = path.dirname(__filename);
  * Also creates a 200x200 thumbnail alongside the original.
  * @returns {{ original: string, thumb: string }}
  */
-const processImage = async (base64String) => {
+const processImage = async (base64String, productName = 'product') => {
   if (!base64String || !base64String.startsWith('data:image')) {
     return { original: base64String, thumb: base64String };
   }
@@ -24,13 +24,27 @@ const processImage = async (base64String) => {
     const mimeType = matches[1];
     const extension = mimeType.split('/')[1] === 'jpeg' ? 'jpg' : mimeType.split('/')[1];
     const buffer = Buffer.from(matches[2], 'base64');
-    const ts = Date.now();
-    const rand = Math.floor(Math.random() * 1000);
-    const filename = `product_${ts}_${rand}.${extension}`;
-    const thumbFilename = `thumb_${ts}_${rand}.${extension}`;
+    const sanitizedName = productName
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '') || 'product';
+
+    let filename = `${sanitizedName}.${extension}`;
+    let thumbFilename = `thumb_${sanitizedName}.${extension}`;
 
     const uploadsDir = path.join(__dirname, '../uploads');
     if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
+    // Handle filename collisions
+    if (fs.existsSync(path.join(uploadsDir, filename))) {
+      let counter = 1;
+      while (fs.existsSync(path.join(uploadsDir, `${sanitizedName}-${counter}.${extension}`))) {
+        counter++;
+      }
+      filename = `${sanitizedName}-${counter}.${extension}`;
+      thumbFilename = `thumb_${sanitizedName}-${counter}.${extension}`;
+    }
 
     // Save original
     fs.writeFileSync(path.join(uploadsDir, filename), buffer);
@@ -98,7 +112,7 @@ export const createProduct = async (req, res) => {
       }
     }
 
-    const { original, thumb } = await processImage(image);
+    const { original, thumb } = await processImage(image, name);
 
     const [result] = await pool.query(
       'INSERT INTO products (category_id, name, description, price, image_url, image_thumb_url) VALUES (?, ?, ?, ?, ?, ?)',
@@ -125,7 +139,7 @@ export const updateProduct = async (req, res) => {
       }
     }
 
-    const { original, thumb } = await processImage(image);
+    const { original, thumb } = await processImage(image, name);
 
     await pool.query(
       'UPDATE products SET category_id = ?, name = ?, description = ?, price = ?, image_url = ?, image_thumb_url = ? WHERE id = ?',
