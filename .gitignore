@@ -18,6 +18,8 @@ deploy/
 .env.test.local
 .env.production.local
 backend/.env
+backend/.env.production
+
 
 # Debug
 npm-debug.log*
