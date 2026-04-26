@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { FileText, Package, ArrowLeft, Menu, X, Tags, LayoutDashboard, Bell } from 'lucide-react';
+import { FileText, Package, ArrowLeft, Menu, X, Tags, LayoutDashboard, Bell, ChevronLeft, ChevronRight } from 'lucide-react';
 import { orderService } from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const AdminLayout = () => {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [pendingOrders, setPendingOrders] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [lastViewedOrderId, setLastViewedOrderId] = useState(
@@ -60,8 +61,21 @@ const AdminLayout = () => {
         <div className="sidebar-overlay" onClick={closeSidebar} />
       )}
 
-      <aside className={`sidebar${sidebarOpen ? ' sidebar--open' : ''}`}>
-        <h2 style={{ fontFamily: 'Playfair Display' }}>Bakery<br />CMS Panel</h2>
+      <aside className={`sidebar${sidebarOpen ? ' sidebar--open' : ''} ${isCollapsed ? 'collapsed' : ''}`}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '3rem' }}>
+          <div>
+            <h2 className="sidebar-title-expanded" style={{ fontFamily: 'Playfair Display', margin: 0 }}>Bakery<br />CMS Panel</h2>
+            <h2 className="sidebar-title-collapsed" style={{ fontFamily: 'Playfair Display', margin: 0, fontSize: '2rem', textAlign: 'center' }}>B</h2>
+          </div>
+          <button 
+            className="desktop-only"
+            onClick={() => setIsCollapsed(!isCollapsed)} 
+            style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', borderRadius: '50%', minWidth: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s', marginTop: '0.2rem' }}
+            title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+          >
+            {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+          </button>
+        </div>
 
         <nav className="sidebar-nav">
           <Link
@@ -69,32 +83,32 @@ const AdminLayout = () => {
             className={`sidebar-link ${location.pathname === '/admin' || location.pathname === '/admin/' ? 'active' : ''}`}
             onClick={closeSidebar}
           >
-            <LayoutDashboard size={20} />
-            Overview
+            <LayoutDashboard size={20} style={{ flexShrink: 0 }} />
+            <span className="link-text">Overview</span>
           </Link>
           <Link
             to="/admin/products"
             className={`sidebar-link ${location.pathname === '/admin/products' ? 'active' : ''}`}
             onClick={closeSidebar}
           >
-            <Package size={20} />
-            Products
+            <Package size={20} style={{ flexShrink: 0 }} />
+            <span className="link-text">Products</span>
           </Link>
           <Link
             to="/admin/categories"
             className={`sidebar-link ${location.pathname === '/admin/categories' ? 'active' : ''}`}
             onClick={closeSidebar}
           >
-            <Tags size={20} />
-            Categories
+            <Tags size={20} style={{ flexShrink: 0 }} />
+            <span className="link-text">Categories</span>
           </Link>
           <Link
             to="/admin/content"
             className={`sidebar-link ${location.pathname === '/admin/content' ? 'active' : ''}`}
             onClick={closeSidebar}
           >
-            <FileText size={20} />
-            Text Content
+            <FileText size={20} style={{ flexShrink: 0 }} />
+            <span className="link-text">Text Content</span>
           </Link>
         </nav>
 
@@ -102,10 +116,10 @@ const AdminLayout = () => {
           <button
             onClick={() => { localStorage.removeItem('adminToken'); window.location.href = '/admin/login'; }}
             className="sidebar-link"
-            style={{ textAlign: 'left', background: 'transparent', width: '100%' }}
+            style={{ textAlign: 'left', background: 'transparent', width: '100%', border: 'none', cursor: 'pointer' }}
           >
-            <ArrowLeft size={20} />
-            Logout
+            <ArrowLeft size={20} style={{ flexShrink: 0 }} />
+            <span className="link-text">Logout</span>
           </button>
         </div>
       </aside>
@@ -113,9 +127,6 @@ const AdminLayout = () => {
       <main className="admin-main" style={{ position: 'relative' }}>
         {/* Desktop & Mobile Notification Header */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', position: 'sticky', top: '1.5rem', zIndex: 100, width: '100%', height: 0, pointerEvents: 'none', gap: '1rem', paddingRight: '2rem' }}>
-          <Link to="/" style={{ pointerEvents: 'auto', background: 'white', border: '1px solid var(--border-color)', padding: '0.6rem 1rem', borderRadius: '50px', display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', color: 'var(--text-main)', fontSize: '0.9rem', fontWeight: 500, transition: 'all 0.2s', height: '42px' }} className="back-btn-hover">
-            <ArrowLeft size={16} /> Site
-          </Link>
 
           <div ref={dropdownRef} style={{ position: 'relative', pointerEvents: 'auto', height: '42px' }}>
             <button

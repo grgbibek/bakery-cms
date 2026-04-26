@@ -30,7 +30,7 @@ const sampleContent = [
   { key_name: 'contact_address', value: 'Golfutar, Kathmandu, Nepal' },
   { key_name: 'contact_phone', value: '+977 9841543104' },
   { key_name: 'contact_email', value: 'service@bakerynepal.com' },
-  { key_name: 'announcement_enabled', value: 'true' },
+  { key_name: 'announcement_enabled', value: 'false' },
   { key_name: 'announcement_title', value: 'Mother\'s Day Special!' },
   { key_name: 'announcement_text', value: 'Enjoy 20% off on all custom cakes. Pre-order now before we sell out!' },
   { key_name: 'services_hero_title', value: 'Catering & Custom Orders' },

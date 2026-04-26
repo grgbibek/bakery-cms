@@ -43,6 +43,22 @@ const AdminProducts = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        showNotification('File size too large (max 10MB)');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData({ ...formData, image: reader.result });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -150,10 +166,23 @@ const AdminProducts = () => {
                 
                 <div className="form-grid-2-1">
                   <div className="form-group">
-                    <label>Image URL</label>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <ImageIcon size={20} color="var(--text-muted)" />
-                      <input type="url" name="image" value={formData.image} onChange={handleInputChange} className="form-control" placeholder="https://" />
+                    <label>Image Upload or URL</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <ImageIcon size={20} color="var(--text-muted)" />
+                        <input type="url" name="image" value={formData.image && formData.image.startsWith('data:image') ? '' : formData.image} onChange={handleInputChange} className="form-control" placeholder="https:// (Image URL)" />
+                      </div>
+                      <div style={{ position: 'relative', overflow: 'hidden', display: 'inline-block' }}>
+                        <button type="button" className="btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', justifyContent: 'center' }}>
+                          <Package size={18} /> Upload Image File
+                        </button>
+                        <input type="file" accept="image/*" onChange={handleImageUpload} style={{ position: 'absolute', left: 0, top: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }} />
+                      </div>
+                      {formData.image && formData.image.startsWith('data:image') && (
+                        <div style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 600 }}>
+                          ✓ Image file selected successfully.
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="form-group">

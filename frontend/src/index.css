@@ -368,6 +368,25 @@ button {
   top: 0;
   height: 100vh;
   overflow-y: auto;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar.collapsed {
+  width: 88px;
+  padding: 2rem 1rem;
+}
+
+.sidebar.collapsed .link-text,
+.sidebar.collapsed .sidebar-title-expanded {
+  display: none;
+}
+
+.sidebar-title-collapsed {
+  display: none;
+}
+
+.sidebar.collapsed .sidebar-title-collapsed {
+  display: block;
 }
 
 .sidebar h2 {
@@ -390,6 +409,13 @@ button {
   display: flex;
   align-items: center;
   gap: 1rem;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.sidebar.collapsed .sidebar-link {
+  justify-content: center;
+  padding: 1rem;
 }
 
 .sidebar-link:hover,
@@ -1018,6 +1044,10 @@ button {
     left: 0 !important;
     margin: 0 auto !important;
     bottom: 5rem !important;
+  }
+
+  .desktop-only {
+    display: none !important;
   }
 }
 

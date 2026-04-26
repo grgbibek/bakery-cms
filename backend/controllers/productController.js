@@ -1,4 +1,34 @@
 import pool from '../config/db.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const saveBase64Image = (base64String) => {
+  if (!base64String || !base64String.startsWith('data:image')) return base64String;
+  
+  try {
+    const matches = base64String.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+    if (!matches || matches.length !== 3) return base64String;
+    
+    const extension = matches[1].split('/')[1] === 'jpeg' ? 'jpg' : matches[1].split('/')[1];
+    const buffer = Buffer.from(matches[2], 'base64');
+    const filename = `product_${Date.now()}_${Math.floor(Math.random()*1000)}.${extension}`;
+    
+    const uploadsDir = path.join(__dirname, '../uploads');
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+    
+    fs.writeFileSync(path.join(uploadsDir, filename), buffer);
+    return `/uploads/${filename}`;
+  } catch (error) {
+    console.error('Error saving image:', error);
+    return base64String;
+  }
+};
 
 export const getProducts = async (req, res) => {
   try {
@@ -46,11 +76,13 @@ export const createProduct = async (req, res) => {
       }
     }
 
+    let finalImage = saveBase64Image(image);
+
     const [result] = await pool.query(
       'INSERT INTO products (category_id, name, description, price, image_url) VALUES (?, ?, ?, ?, ?)',
-      [category_id, name, description, price, image]
+      [category_id, name, description, price, finalImage]
     );
-    res.status(201).json({ id: result.insertId, name, description, price, image, category });
+    res.status(201).json({ id: result.insertId, name, description, price, image: finalImage, category });
   } catch (error) {
     res.status(500).json({ message: 'Server Error' });
   }
@@ -70,11 +102,13 @@ export const updateProduct = async (req, res) => {
       }
     }
 
+    let finalImage = saveBase64Image(image);
+
     await pool.query(
       'UPDATE products SET category_id = ?, name = ?, description = ?, price = ?, image_url = ? WHERE id = ?',
-      [category_id, name, description, price, image, req.params.id]
+      [category_id, name, description, price, finalImage, req.params.id]
     );
-    res.json({ id: req.params.id, name, description, price, image, category });
+    res.json({ id: req.params.id, name, description, price, image: finalImage, category });
   } catch (error) {
     res.status(500).json({ message: 'Server Error' });
   }
