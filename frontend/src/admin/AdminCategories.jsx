@@ -85,14 +85,6 @@ const AdminCategories = () => {
           <h1>Category Management</h1>
           <p style={{ color: 'var(--text-muted)' }}>Organize your bakery's menus</p>
         </div>
-        <motion.button 
-          whileHover={{ scale: 1.05 }} 
-          whileTap={{ scale: 0.95 }}
-          className="btn-primary" 
-          onClick={() => { handleCancel(); setIsFormOpen(!isFormOpen); }}
-        >
-          {isFormOpen ? <><X size={18}/> Close</> : <><Plus size={18}/> Add Category</>}
-        </motion.button>
       </div>
 
       {notification && (
@@ -144,7 +136,18 @@ const AdminCategories = () => {
       </AnimatePresence>
 
       <div className="admin-card">
-        <h3 style={{ marginBottom: '1.5rem' }}>Categories List ({categories.length})</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <h3 style={{ margin: 0 }}>Categories List ({categories.length})</h3>
+          <motion.button 
+            whileHover={{ scale: 1.05 }} 
+            whileTap={{ scale: 0.95 }}
+            className="btn-primary" 
+            style={{ padding: '0.6rem 1.2rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            onClick={() => { handleCancel(); setIsFormOpen(!isFormOpen); }}
+          >
+            {isFormOpen ? <><X size={16}/> Close</> : <><Plus size={16}/> Add Category</>}
+          </motion.button>
+        </div>
         
         {categories.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>

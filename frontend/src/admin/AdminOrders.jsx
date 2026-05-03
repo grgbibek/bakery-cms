@@ -1,16 +1,28 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { orderService } from '../services/api';
-import { ShoppingCart, TrendingUp, DollarSign, Package, Clock, CheckCircle, Bell, XCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ShoppingCart, TrendingUp, DollarSign, Package, Clock, CheckCircle, Bell, XCircle, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const AdminOrders = () => {
   const [orders, setOrders] = useState([]);
-  const [stats, setStats] = useState({ totalOrders: 0, totalRevenue: 0, averageOrderValue: 0 });
+  const [stats, setStats] = useState({ totalOrders: 0, totalRevenue: 0, pendingOrders: 0, completedOrders: 0 });
+  const [filter, setFilter] = useState('all');
+
+  const STATUS_THEMES = {
+    pending: { bg: '#fffbeb', text: '#d97706', label: 'Pending' },
+    confirmed: { bg: '#f5f3ff', text: '#8b5cf6', label: 'Preparing' },
+    ready: { bg: '#ecfdf5', text: '#10b981', label: 'Ready' },
+    shipped: { bg: '#eff6ff', text: '#3b82f6', label: 'Out for Delivery' },
+    delivered: { bg: '#ecfdf5', text: '#059669', label: 'Delivered' },
+    cancelled: { bg: '#fef2f2', text: '#ef4444', label: 'Cancelled' }
+  };
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState(null);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, orderId: null });
   const [rejectModal, setRejectModal] = useState({ isOpen: false, orderId: null });
   const [rejectReason, setRejectReason] = useState('');
+  const [itemsModal, setItemsModal] = useState({ isOpen: false, orderId: null, items: [], loading: false });
   const latestOrderIdRef = useRef(null);
 
   const fetchDashboardData = async (isPolling = false) => {
@@ -76,6 +88,17 @@ const AdminOrders = () => {
       alert('Failed to reject order');
     } finally {
       setRejectModal({ isOpen: false, orderId: null });
+    }
+  };
+
+  const handleViewItems = async (orderId) => {
+    setItemsModal({ isOpen: true, orderId, items: [], loading: true });
+    try {
+      const res = await orderService.getOrderDetails(orderId);
+      setItemsModal(prev => ({ ...prev, items: res.data || [], loading: false }));
+    } catch (error) {
+      alert('Failed to load order items');
+      setItemsModal(prev => ({ ...prev, isOpen: false, loading: false }));
     }
   };
 
@@ -163,15 +186,17 @@ const AdminOrders = () => {
           <Clock size={20} /> Recent Orders
         </h3>
         
-        {orders.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
-            <Package size={48} style={{ opacity: 0.2, marginBottom: '1rem', margin: '0 auto' }} />
-            <p>No orders have been placed yet.</p>
-          </div>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table className="admin-table">
-              <thead>
+        {(() => {
+          const activeOrders = orders.filter(o => o.status !== 'delivered' && o.status !== 'cancelled');
+          return activeOrders.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+              <Package size={48} style={{ opacity: 0.2, marginBottom: '1rem', margin: '0 auto' }} />
+              <p>No active orders require your attention.</p>
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table className="admin-table">
+                <thead>
                 <tr>
                   <th>Order ID</th>
                   <th>Customer Name</th>
@@ -185,7 +210,7 @@ const AdminOrders = () => {
               </thead>
               <tbody>
                 <AnimatePresence>
-                  {orders.map((order, index) => (
+                  {activeOrders.map((order, index) => (
                     <motion.tr 
                       key={order.id}
                       initial={{ opacity: 0, x: -20 }}
@@ -193,7 +218,15 @@ const AdminOrders = () => {
                       transition={{ delay: index * 0.05 }}
                       whileHover={{ backgroundColor: '#fcfbfa' }}
                     >
-                      <td style={{ fontWeight: 600, color: 'var(--primary)' }}>#{order.id.toString().padStart(5, '0')}</td>
+                      <td>
+                        <Link 
+                          to={`/admin/orders/${order.id}`}
+                          style={{ fontWeight: 700, color: 'var(--primary)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                        >
+                          #{order.id.toString().padStart(5, '0')}
+                          <ExternalLink size={12} style={{ opacity: 0.5 }} />
+                        </Link>
+                      </td>
                       <td style={{ fontWeight: 500 }}>{order.customer_name}</td>
                       <td>
                         <div style={{ display: 'flex', flexDirection: 'column', fontSize: '0.85rem' }}>
@@ -209,22 +242,26 @@ const AdminOrders = () => {
                       <td style={{ fontWeight: 700, color: '#16a34a' }}>Rs. {Number(order.total_amount).toFixed(2)}</td>
                       <td>
                         <span style={{
-                          padding: '0.25rem 0.5rem',
+                          padding: '0.4rem 0.75rem',
                           borderRadius: '9999px',
-                          fontSize: '0.8rem',
-                          fontWeight: 600,
-                          backgroundColor: order.status === 'confirmed' ? '#dcfce7' : order.status === 'cancelled' ? '#fef2f2' : '#fef3c7',
-                          color: order.status === 'confirmed' ? '#16a34a' : order.status === 'cancelled' ? '#ef4444' : '#d97706',
-                          textTransform: 'capitalize'
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          backgroundColor: (STATUS_THEMES[order.status] || STATUS_THEMES.pending).bg,
+                          color: (STATUS_THEMES[order.status] || STATUS_THEMES.pending).text,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.3rem',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.02em'
                         }}>
-                          {order.status || 'pending'}
+                          {(STATUS_THEMES[order.status] || STATUS_THEMES.pending).label}
                         </span>
                       </td>
                       <td style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
                         {new Date(order.created_at).toLocaleString()}
                       </td>
                       <td>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <div style={{ display: 'flex', gap: '0.4rem' }}>
                           {(!order.status || order.status === 'pending') && (
                             <button
                               onClick={() => setConfirmModal({ isOpen: true, orderId: order.id })}
@@ -232,18 +269,17 @@ const AdminOrders = () => {
                                 background: 'var(--primary)',
                                 color: 'white',
                                 border: 'none',
-                                padding: '0.4rem 0.6rem',
-                                borderRadius: '6px',
+                                padding: '0.5rem',
+                                borderRadius: '8px',
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '0.3rem',
-                                fontSize: '0.8rem',
-                                fontWeight: 500
+                                justifyContent: 'center',
+                                transition: 'all 0.2s'
                               }}
                               title="Confirm Order"
                             >
-                              <CheckCircle size={16} /> Confirm
+                              <CheckCircle size={18} />
                             </button>
                           )}
                           {order.status !== 'cancelled' && (
@@ -253,18 +289,17 @@ const AdminOrders = () => {
                                 background: 'transparent',
                                 color: '#ef4444',
                                 border: '1px solid #ef4444',
-                                padding: '0.4rem 0.6rem',
-                                borderRadius: '6px',
+                                padding: '0.5rem',
+                                borderRadius: '8px',
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '0.3rem',
-                                fontSize: '0.8rem',
-                                fontWeight: 500
+                                justifyContent: 'center',
+                                transition: 'all 0.2s'
                               }}
                               title="Reject Order"
                             >
-                              <XCircle size={16} /> Reject
+                              <XCircle size={18} />
                             </button>
                           )}
                         </div>
@@ -275,7 +310,8 @@ const AdminOrders = () => {
               </tbody>
             </table>
           </div>
-        )}
+          );
+        })()}
       </div>
 
       {/* Confirm Modal */}
@@ -318,6 +354,53 @@ const AdminOrders = () => {
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
                 <button onClick={() => setRejectModal({ isOpen: false, orderId: null })} style={{ padding: '0.5rem 1rem', background: 'transparent', border: '1px solid var(--border-color)', borderRadius: '6px', cursor: 'pointer' }}>Cancel</button>
                 <button onClick={processRejectOrder} style={{ padding: '0.5rem 1rem', background: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 500 }}>Reject Order</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Items Modal */}
+      <AnimatePresence>
+        {itemsModal.isOpen && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '500px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <h3 style={{ margin: 0, fontFamily: 'Playfair Display', fontSize: '1.4rem' }}>Items in Order #{itemsModal.orderId}</h3>
+                <button onClick={() => setItemsModal({ ...itemsModal, isOpen: false })} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}><Package size={20} /></button>
+              </div>
+              
+              <div style={{ flex: 1, overflowY: 'auto' }}>
+                {itemsModal.loading ? (
+                  <p style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Loading items...</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    {itemsModal.items.map((item, i) => (
+                      <div key={i} style={{ display: 'flex', gap: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #eee' }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 600, fontSize: '1rem' }}>{item.product_name}</div>
+                          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                            Quantity: {item.quantity} × Rs. {Number(item.price_at_purchase).toFixed(2)}
+                          </div>
+                          {item.options && item.options.cakeType && (
+                            <div style={{ marginTop: '0.5rem' }}>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary)', background: '#fef3c7', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
+                                {item.options.cakeType}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ fontWeight: 700, color: 'var(--secondary)' }}>
+                          Rs. {(item.quantity * item.price_at_purchase).toFixed(2)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '2px solid #f5ece3', textAlign: 'right' }}>
+                <button onClick={() => setItemsModal({ ...itemsModal, isOpen: false })} style={{ padding: '0.6rem 1.5rem', background: 'var(--secondary)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>Close</button>
               </div>
             </motion.div>
           </div>

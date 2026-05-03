@@ -33,8 +33,11 @@ const processImage = async (base64String, productName = 'product') => {
     let filename = `${sanitizedName}.${extension}`;
     let thumbFilename = `thumb_${sanitizedName}.${extension}`;
 
-    const uploadsDir = path.join(__dirname, '../uploads');
+    const uploadsDir = path.join(__dirname, '../uploads', 'Product');
+    const thumbDir = path.join(uploadsDir, 'thumbnail');
+    
     if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+    if (!fs.existsSync(thumbDir)) fs.mkdirSync(thumbDir, { recursive: true });
 
     // Handle filename collisions
     if (fs.existsSync(path.join(uploadsDir, filename))) {
@@ -52,11 +55,11 @@ const processImage = async (base64String, productName = 'product') => {
     // Save compressed thumbnail (200x200 cover crop)
     await sharp(buffer)
       .resize(200, 200, { fit: 'cover' })
-      .toFile(path.join(uploadsDir, thumbFilename));
+      .toFile(path.join(thumbDir, thumbFilename));
 
     return {
-      original: `/uploads/${filename}`,
-      thumb: `/uploads/${thumbFilename}`
+      original: `/uploads/Product/${filename}`,
+      thumb: `/uploads/Product/thumbnail/${thumbFilename}`
     };
   } catch (error) {
     console.error('Error processing image:', error);
@@ -91,15 +94,29 @@ export const getProductById = async (req, res) => {
       LEFT JOIN categories c ON p.category_id = c.id
       WHERE p.id = ?
     `, [req.params.id]);
+    
     if (rows.length === 0) return res.status(404).json({ message: 'Product not found' });
-    res.json(rows[0]);
+    
+    const product = rows[0];
+    
+    // Fetch additional images
+    const [images] = await pool.query('SELECT image_url FROM product_images WHERE product_id = ?', [req.params.id]);
+    product.images = images.length > 0 ? images.map(img => img.image_url) : [product.image];
+    
+    // Ensure the main image is in the list
+    if (product.image && !product.images.includes(product.image)) {
+      product.images.unshift(product.image);
+    }
+    
+    res.json(product);
   } catch (error) {
+    console.error('getProductById error:', error);
     res.status(500).json({ message: 'Server Error' });
   }
 };
 
 export const createProduct = async (req, res) => {
-  const { name, description, price, image, category } = req.body;
+  const { name, description, price, image, images, category } = req.body;
   try {
     let category_id = null;
     if (category) {
@@ -112,13 +129,28 @@ export const createProduct = async (req, res) => {
       }
     }
 
-    const { original, thumb } = await processImage(image, name);
+    const imageArray = Array.isArray(images) && images.length > 0 ? images : (image ? [image] : []);
+    const primaryImage = imageArray.length > 0 ? imageArray[0] : null;
+
+    const { original, thumb } = await processImage(primaryImage, name);
 
     const [result] = await pool.query(
       'INSERT INTO products (category_id, name, description, price, image_url, image_thumb_url) VALUES (?, ?, ?, ?, ?, ?)',
       [category_id, name, description, price, original, thumb]
     );
-    res.status(201).json({ id: result.insertId, name, description, price, image: original, image_thumb: thumb, category });
+
+    const productId = result.insertId;
+
+    if (imageArray.length > 1) {
+      for (let i = 1; i < imageArray.length; i++) {
+        const { original: extraOriginal } = await processImage(imageArray[i], `${name}-extra-${i}`);
+        if (extraOriginal) {
+          await pool.query('INSERT INTO product_images (product_id, image_url) VALUES (?, ?)', [productId, extraOriginal]);
+        }
+      }
+    }
+
+    res.status(201).json({ id: productId, name, description, price, image: original, image_thumb: thumb, category });
   } catch (error) {
     console.error('createProduct error:', error);
     res.status(500).json({ message: 'Server Error' });
@@ -126,7 +158,8 @@ export const createProduct = async (req, res) => {
 };
 
 export const updateProduct = async (req, res) => {
-  const { name, description, price, image, category } = req.body;
+  const { name, description, price, image, images, category } = req.body;
+  const productId = req.params.id;
   try {
     let category_id = null;
     if (category) {
@@ -139,13 +172,30 @@ export const updateProduct = async (req, res) => {
       }
     }
 
-    const { original, thumb } = await processImage(image, name);
+    const imageArray = Array.isArray(images) && images.length > 0 ? images : (image ? [image] : []);
+    const primaryImage = imageArray.length > 0 ? imageArray[0] : null;
+
+    const { original, thumb } = await processImage(primaryImage, name);
 
     await pool.query(
       'UPDATE products SET category_id = ?, name = ?, description = ?, price = ?, image_url = ?, image_thumb_url = ? WHERE id = ?',
-      [category_id, name, description, price, original, thumb, req.params.id]
+      [category_id, name, description, price, original, thumb, productId]
     );
-    res.json({ id: req.params.id, name, description, price, image: original, image_thumb: thumb, category });
+
+    // If an array of images is provided (even if just 1, meaning they updated it), replace the gallery
+    if (Array.isArray(images)) {
+      await pool.query('DELETE FROM product_images WHERE product_id = ?', [productId]);
+      if (imageArray.length > 1) {
+        for (let i = 1; i < imageArray.length; i++) {
+          const { original: extraOriginal } = await processImage(imageArray[i], `${name}-extra-${i}`);
+          if (extraOriginal) {
+            await pool.query('INSERT INTO product_images (product_id, image_url) VALUES (?, ?)', [productId, extraOriginal]);
+          }
+        }
+      }
+    }
+
+    res.json({ id: productId, name, description, price, image: original, image_thumb: thumb, category });
   } catch (error) {
     console.error('updateProduct error:', error);
     res.status(500).json({ message: 'Server Error' });

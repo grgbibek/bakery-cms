@@ -1,6 +1,6 @@
 import express from 'express';
-import { createOrder, getOrders, getOrderStats, trackOrder, updateOrderStatus } from '../controllers/orderController.js';
-import { protect } from '../middleware/authMiddleware.js';
+import { createOrder, getOrders, getOrderStats, trackOrder, updateOrderStatus, getOrderDetails, uploadPaymentProof, getRiderOrders, pickOrder } from '../controllers/orderController.js';
+import { protect, managerOrAdmin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
@@ -62,7 +62,9 @@ router.post('/', createOrder);
  *       200:
  *         description: A list of orders
  */
-router.get('/', protect, getOrders);
+router.get('/', protect, managerOrAdmin, getOrders);
+router.get('/rider', protect, getRiderOrders);
+router.post('/:id/pick', protect, pickOrder);
 
 /**
  * @swagger
@@ -76,7 +78,7 @@ router.get('/', protect, getOrders);
  *       200:
  *         description: Order statistics object
  */
-router.get('/stats', protect, getOrderStats);
+router.get('/stats', protect, managerOrAdmin, getOrderStats);
 
 /**
  * @swagger
@@ -129,6 +131,27 @@ router.get('/track/:trackingId', trackOrder);
  *       404:
  *         description: Order not found
  */
-router.put('/:id/status', protect, updateOrderStatus);
+router.put('/:id/status', protect, updateOrderStatus); // This is also used by riders to mark as delivered
+
+/**
+ * @swagger
+ * /api/orders/{id}/details:
+ *   get:
+ *     summary: Get full order details (admin)
+ *     tags: [Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Order details with items
+ */
+router.get('/:id/details', protect, getOrderDetails);
+router.post('/:id/payment-proof', protect, uploadPaymentProof);
 
 export default router;

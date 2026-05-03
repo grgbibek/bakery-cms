@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 const AdminProducts = () => {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [formData, setFormData] = useState({ name: '', description: '', price: '', image: '', category: '' });
+  const [formData, setFormData] = useState({ name: '', description: '', price: '', images: [], category: '' });
   const [editingId, setEditingId] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [notification, setNotification] = useState('');
@@ -44,18 +44,32 @@ const AdminProducts = () => {
   };
 
   const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > 10 * 1024 * 1024) { // 10MB limit
-        showNotification('File size too large (max 10MB)');
-        return;
+    const files = Array.from(e.target.files);
+    if (files.length > 0) {
+      const validFiles = files.filter(f => f.size <= 10 * 1024 * 1024);
+      if (validFiles.length < files.length) {
+        showNotification('Some files were too large (max 10MB) and skipped.');
       }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData({ ...formData, image: reader.result });
-      };
-      reader.readAsDataURL(file);
+      
+      const readers = validFiles.map(file => {
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(file);
+        });
+      });
+
+      Promise.all(readers).then(results => {
+        setFormData(prev => ({ ...prev, images: [...(prev.images || []), ...results] }));
+      });
     }
+  };
+
+  const removeImage = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index)
+    }));
   };
 
 
@@ -69,7 +83,7 @@ const AdminProducts = () => {
         await productService.createProduct(formData);
         showNotification('Product added successfully!');
       }
-      setFormData({ name: '', description: '', price: '', image: '', category: '' });
+      setFormData({ name: '', description: '', price: '', images: [], category: '' });
       setEditingId(null);
       setIsFormOpen(false);
       fetchProducts();
@@ -78,11 +92,17 @@ const AdminProducts = () => {
     }
   };
 
-  const handleEdit = (product) => {
-    setFormData(product);
-    setEditingId(product.id);
-    setIsFormOpen(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  const handleEdit = async (product) => {
+    try {
+      const res = await productService.getProduct(product.id);
+      const fullProduct = res.data;
+      setFormData({ ...fullProduct, images: fullProduct.images || (fullProduct.image ? [fullProduct.image] : []) });
+      setEditingId(fullProduct.id);
+      setIsFormOpen(true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err) {
+      showNotification('Failed to load product details');
+    }
   };
 
   const handleDelete = async (id) => {
@@ -99,7 +119,7 @@ const AdminProducts = () => {
 
   const handleCancel = () => {
     setEditingId(null);
-    setFormData({ name: '', description: '', price: '', image: '', category: '' });
+    setFormData({ name: '', description: '', price: '', images: [], category: '' });
     setIsFormOpen(false);
   };
 
@@ -112,14 +132,6 @@ const AdminProducts = () => {
           <h1>Product Inventory</h1>
           <p style={{ color: 'var(--text-muted)' }}>Manage your bakery's offerings</p>
         </div>
-        <motion.button 
-          whileHover={{ scale: 1.05 }} 
-          whileTap={{ scale: 0.95 }}
-          className="btn-primary" 
-          onClick={() => { handleCancel(); setIsFormOpen(!isFormOpen); }}
-        >
-          {isFormOpen ? <><X size={18}/> Close Panel</> : <><Plus size={18}/> Add Product</>}
-        </motion.button>
       </div>
 
       {notification && (
@@ -166,21 +178,31 @@ const AdminProducts = () => {
                 
                 <div className="form-grid-2-1">
                   <div className="form-group">
-                    <label>Image Upload or URL</label>
+                    <label>Product Images (First image will be the main thumbnail)</label>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <ImageIcon size={20} color="var(--text-muted)" />
-                        <input type="url" name="image" value={formData.image && formData.image.startsWith('data:image') ? '' : formData.image} onChange={handleInputChange} className="form-control" placeholder="https:// (Image URL)" />
-                      </div>
                       <div style={{ position: 'relative', overflow: 'hidden', display: 'inline-block' }}>
                         <button type="button" className="btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', justifyContent: 'center' }}>
-                          <Package size={18} /> Upload Image File
+                          <Package size={18} /> Upload Multiple Images
                         </button>
-                        <input type="file" accept="image/*" onChange={handleImageUpload} style={{ position: 'absolute', left: 0, top: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }} />
+                        <input type="file" multiple accept="image/*" onChange={handleImageUpload} style={{ position: 'absolute', left: 0, top: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }} />
                       </div>
-                      {formData.image && formData.image.startsWith('data:image') && (
-                        <div style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 600 }}>
-                          ✓ Image file selected successfully.
+
+                      {/* Image Gallery Preview */}
+                      {formData.images && formData.images.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
+                          {formData.images.map((img, idx) => (
+                            <div key={idx} style={{ position: 'relative', width: '60px', height: '60px', borderRadius: '8px', border: idx === 0 ? '2px solid var(--primary)' : '1px solid #ddd', overflow: 'hidden' }}>
+                              <img src={img.startsWith('data:') || img.startsWith('http') ? img : `${import.meta.env.VITE_API_BASE_URL || ''}${img}`} alt={`Preview ${idx}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              <button 
+                                type="button" 
+                                onClick={() => removeImage(idx)}
+                                style={{ position: 'absolute', top: 0, right: 0, background: 'rgba(255,0,0,0.8)', color: 'white', border: 'none', cursor: 'pointer', padding: '2px', borderRadius: '0 0 0 4px' }}
+                              >
+                                <X size={12} />
+                              </button>
+                              {idx === 0 && <span style={{ position: 'absolute', bottom: 0, left: 0, background: 'var(--primary)', color: 'white', fontSize: '0.5rem', padding: '2px 4px', fontWeight: 'bold' }}>MAIN</span>}
+                            </div>
+                          ))}
                         </div>
                       )}
                     </div>
@@ -209,7 +231,18 @@ const AdminProducts = () => {
       </AnimatePresence>
 
       <div className="admin-card">
-        <h3 style={{ marginBottom: '1.5rem' }}>Inventory List ({products.length})</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <h3 style={{ margin: 0 }}>Inventory List ({products.length})</h3>
+          <motion.button 
+            whileHover={{ scale: 1.05 }} 
+            whileTap={{ scale: 0.95 }}
+            className="btn-primary" 
+            style={{ padding: '0.6rem 1.2rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            onClick={() => { handleCancel(); setIsFormOpen(!isFormOpen); }}
+          >
+            {isFormOpen ? <><X size={16}/> Close Panel</> : <><Plus size={16}/> Add Product</>}
+          </motion.button>
+        </div>
         
         {products.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
@@ -240,9 +273,21 @@ const AdminProducts = () => {
                       whileHover={{ backgroundColor: '#fcfbfa' }}
                     >
                       <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                          <img src={product.image} alt={product.name} style={{ width: '64px', height: '64px', objectFit: 'cover', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
-                          <span style={{ fontWeight: 600, fontSize: '1.05rem' }}>{product.name}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
+                          <div style={{ width: '56px', height: '56px', borderRadius: '14px', overflow: 'hidden', boxShadow: '0 4px 10px rgba(0,0,0,0.08)', border: '1px solid var(--border-color)', background: '#fcfbfa', flexShrink: 0 }}>
+                            <img 
+                              src={
+                                (product.image_thumb || product.image) 
+                                  ? ((product.image_thumb || product.image).startsWith('data:') || (product.image_thumb || product.image).startsWith('http') 
+                                      ? (product.image_thumb || product.image) 
+                                      : `${import.meta.env.VITE_API_BASE_URL || ''}${product.image_thumb || product.image}`) 
+                                  : 'https://via.placeholder.com/200?text=No+Image'
+                              } 
+                              alt={product.name} 
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                            />
+                          </div>
+                          <span style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--secondary)' }}>{product.name}</span>
                         </div>
                       </td>
                       <td>

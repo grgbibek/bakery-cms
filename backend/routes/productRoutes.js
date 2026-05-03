@@ -1,6 +1,6 @@
 import express from 'express';
 import { getProducts, getProductById, createProduct, updateProduct, deleteProduct } from '../controllers/productController.js';
-import { protect } from '../middleware/authMiddleware.js';
+import { protect, managerOrAdmin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
@@ -68,7 +68,7 @@ router.get('/:id', getProductById);
  *       201:
  *         description: Created
  */
-router.post('/', protect, createProduct);
+router.post('/', protect, managerOrAdmin, createProduct);
 
 /**
  * @swagger
@@ -103,7 +103,7 @@ router.post('/', protect, createProduct);
  *       200:
  *         description: Updated
  */
-router.put('/:id', protect, updateProduct);
+router.put('/:id', protect, managerOrAdmin, updateProduct);
 
 /**
  * @swagger
@@ -123,6 +123,6 @@ router.put('/:id', protect, updateProduct);
  *       200:
  *         description: Deleted
  */
-router.delete('/:id', protect, deleteProduct);
+router.delete('/:id', protect, managerOrAdmin, deleteProduct);
 
 export default router;

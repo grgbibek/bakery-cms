@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { FileText, Package, ArrowLeft, Menu, X, Tags, LayoutDashboard, Bell, ChevronLeft, ChevronRight } from 'lucide-react';
+import { FileText, Package, ArrowLeft, Menu, X, Tags, LayoutDashboard, Bell, ChevronLeft, ChevronRight, Users, Settings } from 'lucide-react';
 import { orderService } from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -15,7 +15,23 @@ const AdminLayout = () => {
   );
   const dropdownRef = useRef(null);
 
+  const [userRole, setUserRole] = useState('');
+  const [userName, setUserName] = useState('');
+
   const closeSidebar = () => setSidebarOpen(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem('adminToken');
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        setUserRole(payload.role || '');
+        setUserName(payload.name || 'Admin');
+      } catch (e) {
+        console.error('Error decoding token:', e);
+      }
+    }
+  }, []);
 
   const fetchPendingOrders = async () => {
     try {
@@ -103,13 +119,41 @@ const AdminLayout = () => {
             <span className="link-text">Categories</span>
           </Link>
           <Link
-            to="/admin/content"
-            className={`sidebar-link ${location.pathname === '/admin/content' ? 'active' : ''}`}
+            to="/admin/reports"
+            className={`sidebar-link ${location.pathname === '/admin/reports' ? 'active' : ''}`}
             onClick={closeSidebar}
           >
             <FileText size={20} style={{ flexShrink: 0 }} />
-            <span className="link-text">Text Content</span>
+            <span className="link-text">Reports</span>
           </Link>
+          {userRole === 'admin' && (
+            <>
+              <Link
+                to="/admin/content"
+                className={`sidebar-link ${location.pathname === '/admin/content' ? 'active' : ''}`}
+                onClick={closeSidebar}
+              >
+                <FileText size={20} style={{ flexShrink: 0 }} />
+                <span className="link-text">Text Content</span>
+              </Link>
+              <Link
+                to="/admin/settings"
+                className={`sidebar-link ${location.pathname === '/admin/settings' ? 'active' : ''}`}
+                onClick={closeSidebar}
+              >
+                <Settings size={20} style={{ flexShrink: 0 }} />
+                <span className="link-text">System Settings</span>
+              </Link>
+              <Link
+                to="/admin/users"
+                className={`sidebar-link ${location.pathname === '/admin/users' ? 'active' : ''}`}
+                onClick={closeSidebar}
+              >
+                <Users size={20} style={{ flexShrink: 0 }} />
+                <span className="link-text">Users</span>
+              </Link>
+            </>
+          )}
         </nav>
 
         <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -128,7 +172,13 @@ const AdminLayout = () => {
         {/* Desktop & Mobile Notification Header */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', position: 'sticky', top: '1.5rem', zIndex: 100, width: '100%', height: 0, pointerEvents: 'none', gap: '1rem', paddingRight: '2rem' }}>
 
-          <div ref={dropdownRef} style={{ position: 'relative', pointerEvents: 'auto', height: '42px' }}>
+          <div ref={dropdownRef} style={{ position: 'relative', pointerEvents: 'auto', display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
+            {/* User Info */}
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem' }}>
+              <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--secondary)' }}>{userName}</span>
+              <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.08em', borderLeft: '1px solid var(--border-color)', paddingLeft: '0.6rem' }}>{userRole}</span>
+            </div>
+
             <button
               onClick={() => {
                 const nextState = !showNotifications;
@@ -206,7 +256,7 @@ const AdminLayout = () => {
                     ) : (
                       pendingOrders.map(order => (
                         <Link
-                          to="/admin"
+                          to={`/admin/orders/${order.id}`}
                           key={order.id}
                           onClick={() => setShowNotifications(false)}
                           style={{

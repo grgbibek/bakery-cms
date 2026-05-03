@@ -1,5 +1,6 @@
 import express from 'express';
-import { login } from '../controllers/authController.js';
+import { login, getUsers, createUser, deleteUser, updateUser } from '../controllers/authController.js';
+import { protect, adminOnly } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
@@ -39,5 +40,9 @@ const router = express.Router();
  *         description: Invalid credentials
  */
 router.post('/login', login);
+router.get('/users', protect, adminOnly, getUsers);
+router.post('/users', protect, adminOnly, createUser);
+router.delete('/users/:id', protect, adminOnly, deleteUser);
+router.put('/users/:id', protect, adminOnly, updateUser);
 
 export default router;

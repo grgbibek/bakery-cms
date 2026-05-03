@@ -7,7 +7,11 @@ const api = axios.create({
 // Add a request interceptor to automatically attach the token to all requests
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('adminToken');
+    const isRiderPage = window.location.pathname.startsWith('/rider');
+    const token = isRiderPage 
+      ? (localStorage.getItem('riderToken') || localStorage.getItem('adminToken'))
+      : (localStorage.getItem('adminToken') || localStorage.getItem('riderToken'));
+      
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -27,9 +31,12 @@ api.interceptors.response.use(
     if (error.response && error.response.status === 401) {
       // Clear token
       localStorage.removeItem('adminToken');
-      // Force redirect to login page if currently on admin page
+      localStorage.removeItem('riderToken');
+      // Force redirect if currently on restricted page
       if (window.location.pathname.startsWith('/admin') && window.location.pathname !== '/admin/login') {
         window.location.href = '/admin/login';
+      } else if (window.location.pathname.startsWith('/rider') && window.location.pathname !== '/rider/login') {
+        window.location.href = '/rider/login';
       }
     }
     return Promise.reject(error);
@@ -38,6 +45,10 @@ api.interceptors.response.use(
 
 export const authService = {
   login: (credentials) => api.post('/auth/login', credentials),
+  getUsers: () => api.get('/auth/users'),
+  createUser: (data) => api.post('/auth/users', data),
+  updateUser: (id, data) => api.put(`/auth/users/${id}`, data),
+  deleteUser: (id) => api.delete(`/auth/users/${id}`),
 };
 
 export const productService = {
@@ -61,12 +72,21 @@ export const contentService = {
   updateContent: (data) => api.post('/content', data),
 };
 
+export const settingService = {
+  getSettings: () => api.get('/settings'),
+  updateSetting: (key, value) => api.post('/settings/update', { key, value }),
+};
+
 export const orderService = {
   createOrder: (orderPayload) => api.post('/orders', orderPayload),
   getOrders: () => api.get('/orders'),
   getOrderStats: () => api.get('/orders/stats'),
   trackOrder: (trackingId) => api.get(`/orders/track/${trackingId}`),
   updateOrderStatus: (id, status, notes) => api.put(`/orders/${id}/status`, { status, notes }),
+  getOrderDetails: (id) => api.get(`/orders/${id}/details`),
+  getRiderOrders: () => api.get('/orders/rider'),
+  pickOrder: (id) => api.post(`/orders/${id}/pick`),
+  uploadPaymentProof: (id, image) => api.post(`/orders/${id}/payment-proof`, { image }),
 };
 
 export default api;

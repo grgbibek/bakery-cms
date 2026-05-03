@@ -18,3 +18,19 @@ export const protect = (req, res, next) => {
     return res.status(401).json({ message: 'Not authorized, no token' });
   }
 };
+
+export const adminOnly = (req, res, next) => {
+  if (req.user && req.user.role === 'admin') {
+    return next();
+  } else {
+    return res.status(403).json({ message: 'Not authorized as an admin' });
+  }
+};
+
+export const managerOrAdmin = (req, res, next) => {
+  if (req.user && (req.user.role === 'admin' || req.user.role === 'manager')) {
+    return next();
+  } else {
+    return res.status(403).json({ message: 'Not authorized as a manager or admin' });
+  }
+};

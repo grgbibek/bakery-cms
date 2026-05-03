@@ -60,8 +60,18 @@ const AdminContent = () => {
   const [content, setContent] = useState({});
   const [savingKeys, setSavingKeys] = useState({});
   const [successKeys, setSuccessKeys] = useState({});
+  const [userRole, setUserRole] = useState('');
 
   useEffect(() => {
+    const token = localStorage.getItem('adminToken');
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        setUserRole(payload.role || '');
+      } catch (e) {
+        console.error('Error decoding token:', e);
+      }
+    }
     fetchContent();
   }, []);
 
@@ -99,6 +109,16 @@ const AdminContent = () => {
   const handleInputChange = (section_key, value) => {
     setContent({ ...content, [section_key]: value });
   };
+
+  if (userRole && userRole !== 'admin') {
+    return (
+      <div style={{ padding: '4rem 2rem', textAlign: 'center', background: 'white', borderRadius: '24px', margin: '2rem' }}>
+        <CheckCircle size={64} color="#ef4444" style={{ margin: '0 auto 1.5rem', opacity: 0.5 }} />
+        <h2 style={{ fontFamily: 'Playfair Display', marginBottom: '1rem' }}>Access Restricted</h2>
+        <p style={{ color: 'var(--text-muted)' }}>You do not have permission to modify website content.</p>
+      </div>
+    );
+  }
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="admin-container">
