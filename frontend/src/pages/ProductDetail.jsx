@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { productService, settingService } from '../services/api';
 import { useCart } from '../context/CartContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingCart, ArrowLeft, Star, Clock, ShieldCheck, ChevronRight, Plus, Minus, Info, Maximize2, Search } from 'lucide-react';
+import { ShoppingCart, ArrowLeft, Star, Clock, ShieldCheck, ChevronRight, Plus, Minus, Info, Maximize2, Search, Check } from 'lucide-react';
 import Navbar from '../components/Navbar';
 
 const ProductDetail = () => {
@@ -17,10 +17,23 @@ const ProductDetail = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [isZoomed, setIsZoomed] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const [cakeType, setCakeType] = useState('Normal'); // Default option for cakes
-  const [settings, setSettings] = useState({ cake_types: [] });
+  const [selectedAddons, setSelectedAddons] = useState([]);
+  const [pounds, setPounds] = useState(1);
+  const [settings, setSettings] = useState({ cake_types: [], max_cake_pounds: 10 });
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+  const [isWeightDropdownOpen, setIsWeightDropdownOpen] = useState(false);
   const imageRef = useRef(null);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsWeightDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -43,34 +56,60 @@ const ProductDetail = () => {
         setLoading(false);
       });
 
-    // Fetch cake types from settings
     settingService.getSettings()
       .then(res => {
-        if (res.data && res.data.cake_types) {
-          setSettings(res.data);
-          setCakeType(res.data.cake_types[0]?.name || 'Normal');
+        if (res.data) {
+          setSettings({
+            cake_types: res.data.cake_types || [],
+            max_cake_pounds: res.data.max_cake_pounds || 10
+          });
         }
       })
       .catch(err => console.error('Error fetching settings:', err));
-    
+
     const handleResize = () => setIsMobile(window.innerWidth < 1024);
     window.addEventListener('resize', handleResize);
-    
+
     window.scrollTo(0, 0);
     return () => window.removeEventListener('resize', handleResize);
   }, [id]);
 
   const handleAddToCart = () => {
     const isCake = product.category?.toLowerCase().includes('cake');
-    const selectedType = settings.cake_types.find(t => t.name === cakeType);
-    const extraPrice = selectedType ? parseFloat(selectedType.extra) : 0;
-    
-    const options = isCake ? { 
-        cakeType,
-        extraPrice
+    const extraPricePerLb = selectedAddons.reduce((sum, addonName) => {
+      const type = settings.cake_types.find(t => t.name === addonName);
+      return sum + (type ? parseFloat(type.extra) : 0);
+    }, 0);
+
+    const options = isCake ? {
+      addons: selectedAddons,
+      pounds: pounds,
+      extraPrice: extraPricePerLb * pounds
     } : null;
-    
+
     addToCart(product, quantity, options);
+  };
+
+  const handleAddonToggle = (addonName) => {
+    setSelectedAddons(prev =>
+      prev.includes(addonName)
+        ? prev.filter(name => name !== addonName)
+        : [...prev, addonName]
+    );
+  };
+
+  const calculateTotalPrice = () => {
+    const basePrice = parseFloat(product.price);
+    const isCake = product.category?.toLowerCase().includes('cake');
+
+    if (!isCake) return (basePrice * quantity).toFixed(2);
+
+    const extraPricePerLb = selectedAddons.reduce((sum, addonName) => {
+      const type = settings.cake_types.find(t => t.name === addonName);
+      return sum + (type ? parseFloat(type.extra) : 0);
+    }, 0);
+
+    return (((basePrice + extraPricePerLb) * pounds) * quantity).toFixed(2);
   };
 
   const handleMouseMove = (e) => {
@@ -87,11 +126,11 @@ const ProductDetail = () => {
     const { left, top, width, height } = imageRef.current.getBoundingClientRect();
     const x = ((touch.clientX - left) / width) * 100;
     const y = ((touch.clientY - top) / height) * 100;
-    
+
     // Boundary checks
     const boundedX = Math.max(0, Math.min(100, x));
     const boundedY = Math.max(0, Math.min(100, y));
-    
+
     setMousePos({ x: boundedX, y: boundedY });
   };
 
@@ -119,7 +158,7 @@ const ProductDetail = () => {
   return (
     <div style={{ background: '#faf9f7', minHeight: '100vh' }}>
       <Navbar />
-      
+
       <main className="container" style={{ paddingTop: '5.5rem', paddingBottom: '4rem' }}>
         {/* Breadcrumbs */}
         <nav style={{ marginBottom: '2.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
@@ -130,9 +169,9 @@ const ProductDetail = () => {
           <span style={{ color: 'var(--text-main)', fontWeight: 500 }}>{product.name}</span>
         </nav>
 
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', 
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
           gap: isMobile ? '2rem' : '4rem',
           alignItems: 'start'
         }}>
@@ -141,8 +180,8 @@ const ProductDetail = () => {
             initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8 }}
-            style={{ 
-              position: isMobile ? 'relative' : 'sticky', 
+            style={{
+              position: isMobile ? 'relative' : 'sticky',
               top: isMobile ? '0' : '8rem',
               display: 'flex',
               flexDirection: isMobile ? 'column' : 'row-reverse',
@@ -151,7 +190,7 @@ const ProductDetail = () => {
             }}
           >
             {/* Main Image */}
-            <div 
+            <div
               ref={imageRef}
               onMouseEnter={() => !isMobile && setIsZoomed(true)}
               onMouseLeave={() => !isMobile && setIsZoomed(false)}
@@ -159,9 +198,9 @@ const ProductDetail = () => {
               onTouchStart={() => setIsZoomed(true)}
               onTouchEnd={() => setIsZoomed(false)}
               onTouchMove={handleTouchMove}
-              style={{ 
-                borderRadius: '20px', 
-                overflow: 'hidden', 
+              style={{
+                borderRadius: '20px',
+                overflow: 'hidden',
                 boxShadow: '0 15px 40px rgba(0,0,0,0.06)',
                 background: 'white',
                 position: 'relative',
@@ -171,18 +210,18 @@ const ProductDetail = () => {
                 aspectRatio: isMobile ? '1/1' : 'auto'
               }}
             >
-              <img 
-                src={selectedImage} 
-                alt={product.name} 
-                style={{ 
-                  width: '100%', 
-                  height: '100%', 
+              <img
+                src={selectedImage}
+                alt={product.name}
+                style={{
+                  width: '100%',
+                  height: '100%',
                   objectFit: 'cover',
                   opacity: isZoomed ? 0 : 1,
                   transition: 'opacity 0.2s'
-                }} 
+                }}
               />
-              
+
               {isZoomed && (
                 <div style={{
                   position: 'absolute',
@@ -201,10 +240,10 @@ const ProductDetail = () => {
 
             {/* Thumbnails (Vertical on Desktop) */}
             {product.images && product.images.length > 1 && (
-              <div style={{ 
-                display: 'flex', 
+              <div style={{
+                display: 'flex',
                 flexDirection: isMobile ? 'row' : 'column',
-                gap: '0.6rem', 
+                gap: '0.6rem',
                 justifyContent: 'center',
                 overflowX: isMobile ? 'auto' : 'visible',
                 minWidth: isMobile ? 'auto' : '70px'
@@ -214,10 +253,10 @@ const ProductDetail = () => {
                     key={index}
                     whileHover={{ scale: 1.05 }}
                     onClick={() => setSelectedImage(img.startsWith('data:') || img.startsWith('http') ? img : `${import.meta.env.VITE_API_BASE_URL || ''}${img}`)}
-                    style={{ 
-                      width: isMobile ? '56px' : '64px', 
-                      height: isMobile ? '56px' : '64px', 
-                      borderRadius: '8px', 
+                    style={{
+                      width: isMobile ? '56px' : '64px',
+                      height: isMobile ? '56px' : '64px',
+                      borderRadius: '8px',
                       overflow: 'hidden',
                       border: selectedImage === (img.startsWith('data:') || img.startsWith('http') ? img : `${import.meta.env.VITE_API_BASE_URL || ''}${img}`) ? '2px solid var(--primary)' : '1px solid #eee',
                       cursor: 'pointer',
@@ -238,12 +277,12 @@ const ProductDetail = () => {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
           >
-            <h1 style={{ 
-              fontSize: isMobile ? '1.8rem' : '2.4rem', 
+            <h1 style={{
+              fontSize: isMobile ? '1.8rem' : '2.4rem',
               fontFamily: 'Playfair Display', marginBottom: '0.4rem',
               color: 'var(--text-main)', lineHeight: 1.2
             }}>{product.name}</h1>
-            
+
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '1rem' }}>
               <div style={{ fontSize: isMobile ? '1.4rem' : '1.8rem', fontWeight: 800, color: 'var(--primary)' }}>
                 Rs. {Number(product.price).toFixed(2)}
@@ -275,39 +314,162 @@ const ProductDetail = () => {
 
             {/* Action Card */}
             <div style={{ background: 'white', padding: '1.5rem', borderRadius: '20px', border: '1px solid #f0f0f0', marginBottom: '2rem' }}>
-              {product.category?.toLowerCase().includes('cake') && settings.cake_types.length > 0 && (
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.8rem' }}>Choose Cake Type</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '0.5rem' }}>
-                    {settings.cake_types.map(type => (
-                      <button
-                        key={type.name}
-                        onClick={() => setCakeType(type.name)}
+              {product.category?.toLowerCase().includes('cake') && (
+                <>
+                  {/* Weight Selector */}
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.8rem' }}>Weight (Pounds)</div>
+                    <div ref={dropdownRef} style={{ position: 'relative' }}>
+                      <div 
+                        onClick={() => setIsWeightDropdownOpen(!isWeightDropdownOpen)}
                         style={{
-                          padding: '0.5rem 0.2rem', borderRadius: '8px', fontSize: '0.7rem', fontWeight: 600,
-                          cursor: 'pointer', transition: 'all 0.2s',
-                          background: cakeType === type.name ? 'var(--primary)' : '#f8fafc',
-                          color: cakeType === type.name ? 'white' : 'var(--text-main)', border: 'none'
+                          width: '100%',
+                          padding: '0.8rem 1rem',
+                          borderRadius: '12px',
+                          border: isWeightDropdownOpen ? '2px solid var(--primary)' : '1px solid #eee',
+                          fontSize: '1rem',
+                          fontWeight: 600,
+                          background: isWeightDropdownOpen ? 'rgba(195,132,82,0.02)' : '#f8fafc',
+                          cursor: 'pointer',
+                          color: 'var(--text-main)',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          transition: 'all 0.2s ease',
+                          boxShadow: isWeightDropdownOpen ? '0 4px 15px rgba(195,132,82,0.1)' : 'none'
                         }}
                       >
-                        {type.name} {type.extra > 0 && `(+Rs. ${type.extra})`}
-                      </button>
-                    ))}
+                        <span>{pounds} Pound{pounds > 1 ? 's' : ''}</span>
+                        <ChevronRight 
+                          size={18} 
+                          style={{ 
+                            transform: isWeightDropdownOpen ? 'rotate(90deg)' : 'rotate(0deg)', 
+                            transition: 'transform 0.2s',
+                            color: isWeightDropdownOpen ? 'var(--primary)' : 'var(--text-muted)'
+                          }} 
+                        />
+                      </div>
+
+                      <AnimatePresence>
+                        {isWeightDropdownOpen && (
+                          <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.15 }}
+                            style={{
+                              position: 'absolute',
+                              top: '100%',
+                              left: 0,
+                              width: '100%',
+                              marginTop: '0.4rem',
+                              background: 'white',
+                              borderRadius: '12px',
+                              boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+                              border: '1px solid #eee',
+                              zIndex: 10,
+                              maxHeight: '200px',
+                              overflowY: 'auto',
+                              padding: '0.4rem'
+                            }}
+                          >
+                            {[...Array(parseInt(settings.max_cake_pounds || 10))].map((_, i) => (
+                              <div
+                                key={i + 1}
+                                onClick={() => {
+                                  setPounds(i + 1);
+                                  setIsWeightDropdownOpen(false);
+                                }}
+                                style={{
+                                  padding: '0.6rem 1rem',
+                                  borderRadius: '8px',
+                                  cursor: 'pointer',
+                                  fontWeight: pounds === i + 1 ? 700 : 500,
+                                  color: pounds === i + 1 ? 'var(--primary)' : 'var(--text-main)',
+                                  background: pounds === i + 1 ? 'rgba(195,132,82,0.08)' : 'transparent',
+                                  transition: 'background 0.1s'
+                                }}
+                                onMouseEnter={(e) => {
+                                  if (pounds !== i + 1) e.currentTarget.style.background = '#f8fafc';
+                                }}
+                                onMouseLeave={(e) => {
+                                  if (pounds !== i + 1) e.currentTarget.style.background = 'transparent';
+                                }}
+                              >
+                                {i + 1} Pound{i > 0 ? 's' : ''}
+                              </div>
+                            ))}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
                   </div>
-                </div>
+
+                  {/* Dietary Preferences */}
+                  {settings.cake_types.filter(t => t.name.toLowerCase() !== 'normal').length > 0 && (
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.8rem' }}>Dietary Preferences (Optional)</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.5rem' }}>
+                        {settings.cake_types.filter(t => t.name.toLowerCase() !== 'normal').map(type => {
+                          const isSelected = selectedAddons.includes(type.name);
+                          return (
+                            <div 
+                              key={type.name}
+                              onClick={() => handleAddonToggle(type.name)}
+                              style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                padding: '1rem 1.2rem', borderRadius: '12px',
+                                border: isSelected ? '1px solid var(--primary)' : '1px solid transparent',
+                                background: isSelected ? 'rgba(195,132,82,0.04)' : '#f8fafc',
+                                cursor: 'pointer', transition: 'all 0.2s',
+                                position: 'relative', overflow: 'hidden'
+                              }}
+                            >
+                              {/* Decorative left border for selected state */}
+                              {isSelected && (
+                                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '4px', background: 'var(--primary)' }} />
+                              )}
+                              
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                                <div style={{ 
+                                  width: '22px', height: '22px', borderRadius: '6px', 
+                                  border: isSelected ? 'none' : '2px solid #ddd',
+                                  background: isSelected ? 'var(--primary)' : 'white',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  transition: 'all 0.2s',
+                                  boxShadow: isSelected ? '0 2px 8px rgba(195,132,82,0.4)' : 'none'
+                                }}>
+                                  {isSelected && <Check size={14} color="white" strokeWidth={3} />}
+                                </div>
+                                <span style={{ fontWeight: isSelected ? 700 : 600, fontSize: '0.95rem', color: isSelected ? 'var(--primary)' : 'var(--text-main)' }}>
+                                  {type.name}
+                                </span>
+                              </div>
+                              {type.extra > 0 && (
+                                <span style={{ fontSize: '0.85rem', color: isSelected ? 'var(--primary)' : 'var(--text-muted)', fontWeight: isSelected ? 700 : 500 }}>
+                                  +Rs. {type.extra}/lb
+                                </span>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.2rem' }}>
                 <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>Quantity</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: '#f8fafc', padding: '0.4rem 0.8rem', borderRadius: '50px' }}>
-                  <button 
+                  <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
                     style={{ border: 'none', background: 'white', width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}
                   >
                     <Minus size={12} />
                   </button>
                   <span style={{ fontSize: '1rem', fontWeight: 700, minWidth: '25px', textAlign: 'center' }}>{quantity}</span>
-                  <button 
+                  <button
                     onClick={() => setQuantity(quantity + 1)}
                     style={{ border: 'none', background: 'white', width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}
                   >
@@ -316,16 +478,17 @@ const ProductDetail = () => {
                 </div>
               </div>
 
-              <button 
+              <button
                 onClick={handleAddToCart}
-                style={{ 
-                  width: '100%', background: 'var(--primary)', color: 'white', border: 'none', 
-                  padding: '1rem', borderRadius: '12px', fontSize: '1rem', fontWeight: 700, 
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem', 
-                  cursor: 'pointer', transition: 'all 0.2s'
+                style={{
+                  width: '100%', background: 'var(--primary)', color: 'white', border: 'none',
+                  padding: '1rem', borderRadius: '12px', fontSize: '1rem', fontWeight: 700,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem',
+                  cursor: 'pointer', transition: 'all 0.2s',
+                  boxShadow: '0 4px 15px rgba(195,132,82,0.3)'
                 }}
               >
-                <ShoppingCart size={18} /> Add to Cart — Rs. {((parseFloat(product.price) + (settings.cake_types.find(t => t.name === cakeType)?.extra || 0)) * quantity).toFixed(2)}
+                <ShoppingCart size={18} /> Add to Cart — Rs. {calculateTotalPrice()}
               </button>
             </div>
           </motion.div>
@@ -346,7 +509,7 @@ const ProductDetail = () => {
                 key={p.id}
                 whileHover={{ y: -8 }}
                 onClick={() => navigate(`/product/${p.id}`)}
-                style={{ 
+                style={{
                   cursor: 'pointer', background: 'white', padding: '1rem', borderRadius: '20px',
                   boxShadow: '0 5px 20px rgba(0,0,0,0.02)'
                 }}

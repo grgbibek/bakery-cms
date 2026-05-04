@@ -6,7 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 const AdminSettings = () => {
   const [settings, setSettings] = useState({
     delivery_settings: { base_fee: 100, premium_fee: 200, free_min: 2000, nearby_areas: '' },
-    cake_types: []
+    cake_types: [],
+    max_cake_pounds: 10
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -23,7 +24,8 @@ const AdminSettings = () => {
       if (res.data) {
         setSettings({
           delivery_settings: res.data.delivery_settings || settings.delivery_settings,
-          cake_types: res.data.cake_types || []
+          cake_types: res.data.cake_types || [],
+          max_cake_pounds: res.data.max_cake_pounds || 10
         });
       }
     } catch (error) {
@@ -250,13 +252,38 @@ const AdminSettings = () => {
               <Plus size={16} /> Add New Cake Type
             </button>
 
+            <div className="form-group" style={{ marginBottom: '1.5rem', background: '#fcfaf8', padding: '1.2rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Maximum Cake Pounds Allowed</label>
+              <input 
+                type="number"
+                min="1"
+                value={settings.max_cake_pounds}
+                onChange={(e) => setSettings(prev => ({ ...prev, max_cake_pounds: e.target.value }))}
+                className="form-control"
+              />
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0.5rem 0 0 0' }}>Customers can select weight up to this limit.</p>
+            </div>
+
             <button 
-              onClick={() => saveSettings('cake_types', settings.cake_types)}
+              onClick={async () => {
+                setSaving(true);
+                try {
+                  await settingService.updateSetting('cake_types', settings.cake_types);
+                  await settingService.updateSetting('max_cake_pounds', settings.max_cake_pounds);
+                  setMessage('Cake settings saved successfully!');
+                  setTimeout(() => setMessage(''), 3000);
+                } catch(error) {
+                  console.error(error);
+                  alert('Error saving settings');
+                } finally {
+                  setSaving(false);
+                }
+              }}
               disabled={saving}
               className="btn-primary"
               style={{ width: '100%', justifyContent: 'center' }}
             >
-              <Save size={18} /> {saving ? 'Saving...' : 'Save All Cake Types'}
+              <Save size={18} /> {saving ? 'Saving...' : 'Save Cake Settings'}
             </button>
           </div>
         </section>
