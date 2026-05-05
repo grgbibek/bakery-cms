@@ -311,23 +311,25 @@ const Products = () => {
             </div>
           ) : (
             <>
-              <motion.div 
-                layout
-                style={{ 
-                  display: 'grid', 
-                  gridTemplateColumns: viewMode === 'grid' ? 'repeat(auto-fill, minmax(300px, 1fr))' : '1fr', 
-                  gap: '2.5rem' 
-                }}
-              >
-                <AnimatePresence>
+              <AnimatePresence mode="wait">
+                <motion.div 
+                  key={viewMode}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                  style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: viewMode === 'grid' ? 'repeat(auto-fill, minmax(300px, 1fr))' : '1fr', 
+                    gap: '2.5rem' 
+                  }}
+                >
                   {displayedProducts.map((p, idx) => (
                   <motion.div
                     key={p.id}
-                    layout
-                    initial={{ opacity: 0, scale: 0.9 }}
+                    initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    transition={{ duration: 0.4, delay: idx * 0.05 }}
+                    transition={{ duration: 0.3, delay: idx * 0.03 }}
                     className={viewMode === 'list' ? 'list-view-card' : ''}
                     style={{ 
                       background: 'white', 
@@ -407,8 +409,8 @@ const Products = () => {
                     </div>
                   </motion.div>
                 ))}
+                </motion.div>
               </AnimatePresence>
-            </motion.div>
 
             {visibleCount < filteredProducts.length && (
               <div style={{ textAlign: 'center', marginTop: '3rem' }}>
