@@ -14,12 +14,15 @@ const include = [
   'controllers',
   'middleware',
   'routes',
+  'utils',
   'server.js',
   'swagger.js',
   'package.json',
   '.env',
   'database.json',
-  'migrations'
+  'migrations',
+  'public',
+  'uploads'
 ];
 
 async function prepareDeploy() {

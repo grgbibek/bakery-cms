@@ -2,6 +2,7 @@ import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import bcrypt from 'bcryptjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -56,9 +57,30 @@ async function seedDB() {
     });
 
     console.log('Connected to the database. Clearing existing data...');
+    await connection.query('SET FOREIGN_KEY_CHECKS = 0');
+    await connection.query('DELETE FROM product_images');
+    await connection.query('DELETE FROM order_items');
+    await connection.query('DELETE FROM order_logs');
+    await connection.query('DELETE FROM orders');
     await connection.query('DELETE FROM products');
     await connection.query('DELETE FROM categories');
     await connection.query('DELETE FROM content');
+    await connection.query('DELETE FROM settings');
+    await connection.query('DELETE FROM users');
+    await connection.query('SET FOREIGN_KEY_CHECKS = 1');
+
+    console.log('Inserting sample users...');
+    const hashedAdminPassword = await bcrypt.hash('admin123', 10);
+    const hashedRiderPassword = await bcrypt.hash('rider123', 10);
+    
+    await connection.query(
+      'INSERT INTO users (username, full_name, password, role) VALUES (?, ?, ?, ?)',
+      ['admin', 'System Administrator', hashedAdminPassword, 'admin']
+    );
+    await connection.query(
+      'INSERT INTO users (username, full_name, password, role) VALUES (?, ?, ?, ?)',
+      ['rider', 'Sample Rider', hashedRiderPassword, 'rider']
+    );
 
     console.log('Inserting sample categories...');
     const catIds = [];
@@ -70,11 +92,12 @@ async function seedDB() {
       catIds.push(res.insertId);
     }
 
-    console.log('Inserting sample products...');
+    console.log('Inserting sample products with thumbnails...');
     for (const product of sampleProducts) {
+      const thumbUrl = product.image_url.replace('w=800', 'w=200');
       await connection.query(
-        'INSERT INTO products (category_id, name, description, price, image_url) VALUES (?, ?, ?, ?, ?)',
-        [catIds[product.categoryIndex], product.name, product.description, product.price, product.image_url]
+        'INSERT INTO products (category_id, name, description, price, image_url, image_thumb_url) VALUES (?, ?, ?, ?, ?, ?)',
+        [catIds[product.categoryIndex], product.name, product.description, product.price, product.image_url, thumbUrl]
       );
     }
 
@@ -85,6 +108,18 @@ async function seedDB() {
         [content.key_name, content.value]
       );
     }
+
+    console.log('Inserting sample delivery settings...');
+    const deliverySettings = {
+      base_fee: 100,
+      premium_fee: 200,
+      free_min: 2000,
+      nearby_areas: 'Golfutar, Maharajgunj, Bansbari'
+    };
+    await connection.query(
+      'INSERT INTO settings (setting_key, setting_value) VALUES (?, ?)',
+      ['delivery_settings', JSON.stringify(deliverySettings)]
+    );
 
     console.log('Database successfully seeded!');
     process.exit(0);
