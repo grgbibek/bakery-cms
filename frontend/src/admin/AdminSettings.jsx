@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { settingService } from '../services/api';
-import { Save, Plus, Trash2, Truck, Cake, CheckCircle, RefreshCw, MapPin } from 'lucide-react';
+import { Save, Plus, Trash2, Truck, Cake, CheckCircle, RefreshCw, MapPin, QrCode, Upload, Image as ImageIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { compressImage } from '../utils/imageUtils';
 
 const AdminSettings = () => {
   const [settings, setSettings] = useState({
     delivery_settings: { base_fee: 100, premium_fee: 200, free_min: 2000, nearby_areas: '' },
     cake_types: [],
-    max_cake_pounds: 10
+    max_cake_pounds: 10,
+    payment_qr: ''
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -25,7 +27,8 @@ const AdminSettings = () => {
         setSettings({
           delivery_settings: res.data.delivery_settings || settings.delivery_settings,
           cake_types: res.data.cake_types || [],
-          max_cake_pounds: res.data.max_cake_pounds || 10
+          max_cake_pounds: res.data.max_cake_pounds || 10,
+          payment_qr: res.data.payment_qr || ''
         });
       }
     } catch (error) {
@@ -61,6 +64,23 @@ const AdminSettings = () => {
   const removeCakeType = (index) => {
     const updated = settings.cake_types.filter((_, i) => i !== index);
     setSettings(prev => ({ ...prev, cake_types: updated }));
+  };
+
+  const handleQRUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const compressedBase64 = await compressImage(reader.result, 800);
+        setSettings(prev => ({ ...prev, payment_qr: compressedBase64 }));
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Error uploading QR:', error);
+      alert('Error uploading QR code image');
+    }
   };
 
   const saveSettings = async (key, value) => {
@@ -205,7 +225,7 @@ const AdminSettings = () => {
             <div style={{ maxHeight: '400px', overflowY: 'auto', marginBottom: '1.5rem', paddingRight: '0.5rem' }}>
               {settings.cake_types.map((type, index) => (
                 <motion.div 
-                  layout
+                   layout
                   key={index} 
                   style={{ 
                     display: 'flex', gap: '1rem', alignItems: 'flex-end', 
@@ -284,6 +304,73 @@ const AdminSettings = () => {
               style={{ width: '100%', justifyContent: 'center' }}
             >
               <Save size={18} /> {saving ? 'Saving...' : 'Save Cake Settings'}
+            </button>
+          </div>
+        </section>
+
+        {/* Online Payment QR */}
+        <section className="admin-card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div style={{ 
+            background: 'rgba(195,132,82,0.05)', padding: '1.2rem 2rem', 
+            borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '0.8rem'
+          }}>
+            <QrCode size={20} style={{ color: 'var(--primary)' }} />
+            <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Payment QR Code</h3>
+          </div>
+
+          <div style={{ padding: '2rem' }}>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+              Upload your payment QR code (e.g., Fonepay, eSewa, Khalti). This will be shown to riders so they can accept digital payments during delivery.
+            </p>
+
+            <div style={{ 
+              border: '2px dashed #eee', 
+              borderRadius: '20px', 
+              padding: '2rem', 
+              textAlign: 'center',
+              position: 'relative',
+              background: '#fafafa',
+              marginBottom: '1.5rem',
+              transition: 'all 0.3s'
+            }}>
+              {settings.payment_qr ? (
+                <div style={{ position: 'relative', display: 'inline-block' }}>
+                  <img 
+                    src={settings.payment_qr} 
+                    alt="Payment QR" 
+                    style={{ maxWidth: '200px', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} 
+                  />
+                  <button 
+                    onClick={() => setSettings(prev => ({ ...prev, payment_qr: '' }))}
+                    style={{ position: 'absolute', top: '-10px', right: '-10px', background: '#ef4444', color: 'white', border: 'none', width: '28px', height: '28px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(239, 68, 68, 0.3)' }}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ) : (
+                <div style={{ padding: '1rem' }}>
+                  <div style={{ width: '64px', height: '64px', background: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem', color: '#ccc', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                    <ImageIcon size={32} />
+                  </div>
+                  <p style={{ margin: 0, fontWeight: 600, color: 'var(--text-main)' }}>Click to upload QR Image</p>
+                  <p style={{ margin: '0.4rem 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>PNG, JPG or WebP (Max 1MB)</p>
+                </div>
+              )}
+              <input 
+                type="file" 
+                accept="image/*" 
+                onChange={handleQRUpload}
+                style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
+              />
+            </div>
+
+            <button 
+              onClick={() => saveSettings('payment_qr', settings.payment_qr)}
+              disabled={saving}
+              className="btn-primary"
+              style={{ width: '100%', justifyContent: 'center' }}
+            >
+              <Save size={18} /> {saving ? 'Saving...' : 'Update QR Code'}
             </button>
           </div>
         </section>

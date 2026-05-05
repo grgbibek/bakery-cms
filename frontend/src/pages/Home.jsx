@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { contentService, productService } from '../services/api';
+import React, { useState, useMemo } from 'react';
 import { useCart } from '../context/CartContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Gift, ShoppingCart, Trash2, Plus, Minus, CheckCircle, Copy, Check, MapPin, Search, Star, Clock, Package, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Chatbot from '../components/Chatbot';
+import { useProducts, useContent } from '../hooks/useQueries';
 
 // Default images for visual appeal if db has none
 const defaultHeroImage = 'https://images.unsplash.com/photo-1549931319-a545dcf3bc73?auto=format&fit=crop&q=80&w=1600';
@@ -26,70 +26,44 @@ const sampleProducts = [
 ];
 
 const Home = () => {
-  const [content, setContent] = useState({});
-  const [products, setProducts] = useState([]);
   const [showAnnouncement, setShowAnnouncement] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm]           = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
 
   const { addToCart } = useCart();
   const navigate = useNavigate();
 
+  // ── React Query hooks (cached, shared with Products page) ────────────────────
+  const { data: products = [] } = useProducts();
+  const { data: content  = {} } = useContent();
 
-  useEffect(() => {
-    // Fetch CMS Content
-    contentService.getContent()
-      .then(res => {
-        if (res.data.length === 0) throw new Error("Empty");
-        const contentObj = res.data.reduce((acc, item) => {
-          acc[item.key_name] = item.value;
-          return acc;
-        }, {});
-        setContent(contentObj);
-        if (contentObj.announcement_enabled === 'true') {
-          setTimeout(() => setShowAnnouncement(true), 500);
-        }
-      })
-      .catch(err => {
-        console.log("Using sample content due to API failure/empty");
-        setContent(sampleContent);
-      });
-
-    // Fetch Products
-    productService.getProducts()
-      .then(res => {
-        const data = Array.isArray(res.data) ? res.data : [];
-        if (data.length === 0) throw new Error('Empty');
-        setProducts(data);
-      })
-      .catch(err => {
-        console.log('Using sample products');
-        setProducts(sampleProducts);
-      });
-
-    // Handle hash scrolling if navigating from another page
-    const hash = window.location.hash;
-    if (hash) {
-      setTimeout(() => {
-        const element = document.getElementById(hash.substring(1));
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth' });
-        }
-      }, 500); // Wait for content to load and layout to settle
+  // Show announcement banner once content loads (only once per session)
+  useMemo(() => {
+    if (content.announcement_enabled === 'true') {
+      setTimeout(() => setShowAnnouncement(true), 500);
     }
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [content.announcement_enabled]);
 
-  const heroTitle = content.hero_title || 'Welcome to Kathmandu Bakery';
+  const heroTitle  = content.hero_title    || 'Welcome to Kathmandu Bakery';
   const heroSubtitle = content.hero_subtitle || 'Authentic baked goods, pastries, and artisanal breads made with love.';
-  const aboutText = content.about_us || 'Experience the authentic taste of freshly baked traditions right here in Nepal.';
+  const aboutText  = content.about_us      || 'Experience the authentic taste of freshly baked traditions right here in Nepal.';
 
-  const filteredProducts = (Array.isArray(products) ? products : []).filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) || product.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'All' || product.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  const categories = useMemo(
+    () => ['All', ...new Set((Array.isArray(products) ? products : []).map((p) => p.category))],
+    [products]
+  );
 
-  const categories = ['All', ...new Set((Array.isArray(products) ? products : []).map(p => p.category))];
+  const filteredProducts = useMemo(
+    () => (Array.isArray(products) ? products : []).filter((product) => {
+      const q = searchTerm.toLowerCase();
+      return (
+        (product.name.toLowerCase().includes(q) || product.description.toLowerCase().includes(q)) &&
+        (selectedCategory === 'All' || product.category === selectedCategory)
+      );
+    }),
+    [products, searchTerm, selectedCategory]
+  );
 
   return (
     <div>
@@ -182,7 +156,7 @@ const Home = () => {
                 <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.8rem' }}>Just now</p>
               </div>
             </div>
-            <img src={defaultHeroImage} alt="Fresh Bread" className="hero-image" style={{ borderRadius: '30px 100px 30px 30px', boxShadow: '0 30px 60px rgba(0,0,0,0.15)', height: '650px', objectFit: 'cover' }} />
+            <img src={defaultHeroImage} alt="Fresh Bread" loading="eager" className="hero-image" style={{ borderRadius: '30px 100px 30px 30px', boxShadow: '0 30px 60px rgba(0,0,0,0.15)', height: '650px', objectFit: 'cover' }} />
           </motion.div>
         </div>
       </section>
@@ -248,7 +222,7 @@ const Home = () => {
                   onClick={() => navigate(`/product/${product.id}`)}
                 >
                   <div style={{ overflow: 'hidden', height: '280px', position: 'relative' }}>
-                    <img src={product.image} alt={product.name} className="product-img" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src={product.image} alt={product.name} loading="lazy" decoding="async" className="product-img" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     <div className="product-category-badge" style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(4px)', padding: '0.4rem 0.8rem', borderRadius: '50px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary)' }}>
                       {product.category}
                     </div>
@@ -321,7 +295,7 @@ const Home = () => {
                 whileHover={{ y: -10 }}
               >
                 <div style={{ height: '220px' }}>
-                  <img src={s.img} alt={s.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src={s.img} alt={s.title} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </div>
                 <div style={{ padding: '2.5rem' }}>
                   <div style={{ color: 'var(--primary)', marginBottom: '1.5rem' }}>{s.icon}</div>

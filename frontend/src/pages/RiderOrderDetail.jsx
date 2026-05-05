@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { orderService } from '../services/api';
+import { orderService, settingService } from '../services/api';
 import { 
   ArrowLeft, 
   Package, 
@@ -12,9 +12,11 @@ import {
   ExternalLink,
   Map,
   Camera,
-  CheckCircle
+  CheckCircle,
+  QrCode,
+  X
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { compressImage } from '../utils/imageUtils';
 
 const RiderOrderDetail = () => {
@@ -23,15 +25,23 @@ const RiderOrderDetail = () => {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [showQR, setShowQR] = useState(false);
+  const [paymentQR, setPaymentQR] = useState('');
   const riderUser = JSON.parse(localStorage.getItem('riderUser') || '{}');
 
   useEffect(() => {
     const fetchDetails = async () => {
       try {
-        const res = await orderService.getOrderDetails(id);
-        setOrder(res.data);
+        const [orderRes, settingsRes] = await Promise.all([
+          orderService.getOrderDetails(id),
+          settingService.getSettings()
+        ]);
+        setOrder(orderRes.data);
+        if (settingsRes.data && settingsRes.data.payment_qr) {
+          setPaymentQR(settingsRes.data.payment_qr);
+        }
       } catch (err) {
-        console.error('Failed to fetch order details:', err);
+        console.error('Failed to fetch details:', err);
       } finally {
         setLoading(false);
       }
@@ -81,7 +91,16 @@ const RiderOrderDetail = () => {
         >
           <ArrowLeft size={20} />
         </button>
-        <h1 style={{ margin: 0, fontSize: '1.4rem', fontFamily: 'Playfair Display' }}>Order #{order.id.toString().padStart(5, '0')}</h1>
+        <h1 style={{ margin: 0, fontSize: '1.4rem', fontFamily: 'Playfair Display', flex: 1 }}>Order #{order.id.toString().padStart(5, '0')}</h1>
+        {paymentQR && (
+          <button 
+            onClick={() => setShowQR(true)} 
+            style={{ background: '#f5ece3', border: 'none', color: 'var(--primary)', width: '40px', height: '40px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
+            title="Show Payment QR"
+          >
+            <QrCode size={20} />
+          </button>
+        )}
       </header>
 
       <motion.div 
@@ -205,6 +224,70 @@ const RiderOrderDetail = () => {
            </div>
         </div>
       </motion.div>
+
+      {/* QR Modal */}
+      <AnimatePresence>
+        {showQR && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{ 
+              position: 'fixed', 
+              inset: 0, 
+              background: 'rgba(0,0,0,0.85)', 
+              zIndex: 1000, 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              padding: '2rem',
+              backdropFilter: 'blur(8px)'
+            }}
+            onClick={() => setShowQR(false)}
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              style={{ 
+                background: 'white', 
+                borderRadius: '32px', 
+                padding: '2.5rem', 
+                maxWidth: '400px', 
+                width: '100%',
+                position: 'relative',
+                textAlign: 'center'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button 
+                onClick={() => setShowQR(false)}
+                style={{ position: 'absolute', top: '1.25rem', right: '1.25rem', background: '#f5f5f5', border: 'none', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#666' }}
+              >
+                <X size={20} />
+              </button>
+
+              <h2 style={{ fontFamily: 'Playfair Display', margin: '0 0 0.5rem', fontSize: '1.5rem' }}>Scan to Pay</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '2rem' }}>Show this QR to the customer for digital payment.</p>
+              
+              <div style={{ background: '#f8f9fa', padding: '1.5rem', borderRadius: '24px', marginBottom: '2rem' }}>
+                <img 
+                  src={paymentQR} 
+                  alt="Payment QR" 
+                  style={{ width: '100%', height: 'auto', borderRadius: '12px', display: 'block' }} 
+                />
+              </div>
+
+              <button 
+                onClick={() => setShowQR(false)}
+                style={{ width: '100%', background: 'var(--secondary)', color: 'white', border: 'none', padding: '1.1rem', borderRadius: '16px', fontWeight: 700, fontSize: '1rem', cursor: 'pointer' }}
+              >
+                Close Preview
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

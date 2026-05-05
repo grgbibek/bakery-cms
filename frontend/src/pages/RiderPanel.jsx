@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Truck, MapPin, Phone, CheckCircle, Package, Clock, ExternalLink, Navigation, LogOut, User, Camera, Image as ImageIcon } from 'lucide-react';
-import { orderService } from '../services/api';
+import { Truck, MapPin, Phone, CheckCircle, Package, Clock, ExternalLink, Navigation, LogOut, User, Camera, Image as ImageIcon, QrCode, X } from 'lucide-react';
+import { orderService, settingService } from '../services/api';
 import { Link, useNavigate } from 'react-router-dom';
 import { compressImage } from '../utils/imageUtils';
 
@@ -12,6 +12,8 @@ const RiderPanel = () => {
   const [activeTab, setActiveTab] = useState('available'); // 'available', 'active', or 'completed'
   const [updating, setUpdating] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [paymentQR, setPaymentQR] = useState('');
+  const [showQR, setShowQR] = useState(false);
   const riderUser = JSON.parse(localStorage.getItem('riderUser') || '{}');
 
   const handleLogout = () => {
@@ -49,6 +51,14 @@ const RiderPanel = () => {
 
   useEffect(() => {
     fetchRiderOrders();
+    
+    // Fetch Payment QR
+    settingService.getSettings().then(res => {
+      if (res.data && res.data.payment_qr) {
+        setPaymentQR(res.data.payment_qr);
+      }
+    }).catch(err => console.error('Failed to fetch settings:', err));
+
     const interval = setInterval(() => fetchRiderOrders(true), 20000);
     return () => clearInterval(interval);
   }, []);
@@ -102,10 +112,85 @@ const RiderPanel = () => {
             <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Hello, {riderUser.full_name || riderUser.username}</p>
           </div>
         </div>
-        <button onClick={handleLogout} style={{ background: '#fee2e2', border: 'none', color: '#ef4444', width: '40px', height: '40px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <LogOut size={20} />
-        </button>
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          {paymentQR && (
+            <button 
+              onClick={() => setShowQR(true)} 
+              style={{ background: '#f5ece3', border: 'none', color: 'var(--primary)', width: '40px', height: '40px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              title="Show Payment QR"
+            >
+              <QrCode size={20} />
+            </button>
+          )}
+          <button onClick={handleLogout} style={{ background: '#fee2e2', border: 'none', color: '#ef4444', width: '40px', height: '40px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <LogOut size={20} />
+          </button>
+        </div>
       </header>
+
+      {/* QR Modal */}
+      <AnimatePresence>
+        {showQR && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{ 
+              position: 'fixed', 
+              inset: 0, 
+              background: 'rgba(0,0,0,0.85)', 
+              zIndex: 1000, 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              padding: '2rem',
+              backdropFilter: 'blur(8px)'
+            }}
+            onClick={() => setShowQR(false)}
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              style={{ 
+                background: 'white', 
+                borderRadius: '32px', 
+                padding: '2.5rem', 
+                maxWidth: '400px', 
+                width: '100%',
+                position: 'relative',
+                textAlign: 'center'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button 
+                onClick={() => setShowQR(false)}
+                style={{ position: 'absolute', top: '1.25rem', right: '1.25rem', background: '#f5f5f5', border: 'none', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#666' }}
+              >
+                <X size={20} />
+              </button>
+
+              <h2 style={{ fontFamily: 'Playfair Display', margin: '0 0 0.5rem', fontSize: '1.5rem' }}>Scan to Pay</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '2rem' }}>Show this QR to the customer for digital payment.</p>
+              
+              <div style={{ background: '#f8f9fa', padding: '1.5rem', borderRadius: '24px', marginBottom: '2rem' }}>
+                <img 
+                  src={paymentQR} 
+                  alt="Payment QR" 
+                  style={{ width: '100%', height: 'auto', borderRadius: '12px', display: 'block' }} 
+                />
+              </div>
+
+              <button 
+                onClick={() => setShowQR(false)}
+                style={{ width: '100%', background: 'var(--secondary)', color: 'white', border: 'none', padding: '1.1rem', borderRadius: '16px', fontWeight: 700, fontSize: '1rem', cursor: 'pointer' }}
+              >
+                Close Preview
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {isRefreshing && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ textAlign: 'center', marginBottom: '1rem' }}>

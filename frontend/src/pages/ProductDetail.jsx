@@ -1,30 +1,53 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { productService, settingService } from '../services/api';
 import { useCart } from '../context/CartContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShoppingCart, ArrowLeft, Star, Clock, ShieldCheck, ChevronRight, Plus, Minus, Info, Maximize2, Search, Check } from 'lucide-react';
 import Navbar from '../components/Navbar';
+import { useProduct, useProducts, useSettings } from '../hooks/useQueries';
+
+const formatImg = (img) =>
+  img ? (img.startsWith('data:') || img.startsWith('http') ? img : `${import.meta.env.VITE_API_BASE_URL || ''}${img}`) : 'https://via.placeholder.com/800';
 
 const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { addToCart } = useCart();
-  const [product, setProduct] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
-  const [relatedProducts, setRelatedProducts] = useState([]);
   const [selectedImage, setSelectedImage] = useState(null);
   const [isZoomed, setIsZoomed] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [selectedAddons, setSelectedAddons] = useState([]);
   const [pounds, setPounds] = useState(1);
-  const [settings, setSettings] = useState({ cake_types: [], max_cake_pounds: 10 });
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
   const [isWeightDropdownOpen, setIsWeightDropdownOpen] = useState(false);
   const imageRef = useRef(null);
   const dropdownRef = useRef(null);
 
+  // ── React Query data fetching ────────────────────────────────────────────────
+  const { data: product, isLoading: productLoading } = useProduct(id);
+  const { data: allProducts = [] } = useProducts();
+  const { data: rawSettings } = useSettings();
+
+  const settings = useMemo(() => ({
+    cake_types: rawSettings?.cake_types || [],
+    max_cake_pounds: rawSettings?.max_cake_pounds || 10,
+  }), [rawSettings]);
+
+  const relatedProducts = useMemo(
+    () => allProducts.filter((p) => p.id !== parseInt(id)).slice(0, 4),
+    [allProducts, id]
+  );
+
+  const loading = productLoading;
+
+  // Set selected image once product loads
+  useEffect(() => {
+    if (product?.image) setSelectedImage(formatImg(product.image));
+    window.scrollTo(0, 0);
+  }, [product]);
+
+  // Click outside handler for weight dropdown
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -35,44 +58,12 @@ const ProductDetail = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Mobile resize listener
   useEffect(() => {
-    setLoading(true);
-    productService.getProduct(id)
-      .then(res => {
-        setProduct(res.data);
-        const formatImg = (img) => img ? (img.startsWith('data:') || img.startsWith('http') ? img : `${import.meta.env.VITE_API_BASE_URL || ''}${img}`) : 'https://via.placeholder.com/800';
-        setSelectedImage(formatImg(res.data.image));
-        // Fetch related products (same category)
-        return productService.getProducts();
-      })
-      .then(res => {
-        const others = res.data.filter(p => p.id !== parseInt(id)).slice(0, 4);
-        setRelatedProducts(others);
-      })
-      .catch(err => {
-        console.error('Error fetching product:', err);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-
-    settingService.getSettings()
-      .then(res => {
-        if (res.data) {
-          setSettings({
-            cake_types: res.data.cake_types || [],
-            max_cake_pounds: res.data.max_cake_pounds || 10
-          });
-        }
-      })
-      .catch(err => console.error('Error fetching settings:', err));
-
     const handleResize = () => setIsMobile(window.innerWidth < 1024);
     window.addEventListener('resize', handleResize);
-
-    window.scrollTo(0, 0);
     return () => window.removeEventListener('resize', handleResize);
-  }, [id]);
+  }, []);
 
   const handleAddToCart = () => {
     const isCake = product.category?.toLowerCase().includes('cake');
@@ -98,19 +89,17 @@ const ProductDetail = () => {
     );
   };
 
-  const calculateTotalPrice = () => {
+  const calculateTotalPrice = useMemo(() => {
+    if (!product) return '0.00';
     const basePrice = parseFloat(product.price);
     const isCake = product.category?.toLowerCase().includes('cake');
-
     if (!isCake) return (basePrice * quantity).toFixed(2);
-
     const extraPricePerLb = selectedAddons.reduce((sum, addonName) => {
-      const type = settings.cake_types.find(t => t.name === addonName);
+      const type = settings.cake_types.find((t) => t.name === addonName);
       return sum + (type ? parseFloat(type.extra) : 0);
     }, 0);
-
     return (((basePrice + extraPricePerLb) * pounds) * quantity).toFixed(2);
-  };
+  }, [product, quantity, selectedAddons, pounds, settings.cake_types]);
 
   const handleMouseMove = (e) => {
     if (!imageRef.current || isMobile) return;
@@ -264,7 +253,7 @@ const ProductDetail = () => {
                       flexShrink: 0
                     }}
                   >
-                    <img src={img.startsWith('data:') || img.startsWith('http') ? img : `${import.meta.env.VITE_API_BASE_URL || ''}${img}`} alt={`${product.name} ${index}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src={img.startsWith('data:') || img.startsWith('http') ? img : `${import.meta.env.VITE_API_BASE_URL || ''}${img}`} alt={`${product.name} ${index}`} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   </motion.div>
                 ))}
               </div>
@@ -488,7 +477,7 @@ const ProductDetail = () => {
                   boxShadow: '0 4px 15px rgba(195,132,82,0.3)'
                 }}
               >
-                <ShoppingCart size={18} /> Add to Cart — Rs. {calculateTotalPrice()}
+                <ShoppingCart size={18} /> Add to Cart — Rs. {calculateTotalPrice}
               </button>
             </div>
           </motion.div>
@@ -515,7 +504,7 @@ const ProductDetail = () => {
                 }}
               >
                 <div style={{ height: '180px', borderRadius: '12px', overflow: 'hidden', marginBottom: '1rem' }}>
-                  <img src={p.image} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src={p.image} alt={p.name} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </div>
                 <h3 style={{ fontSize: '1.1rem', margin: '0 0 0.5rem' }}>{p.name}</h3>
                 <p style={{ color: 'var(--primary)', fontWeight: 800, fontSize: '1rem', margin: 0 }}>Rs. {Number(p.price).toFixed(2)}</p>

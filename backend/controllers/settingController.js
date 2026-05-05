@@ -1,7 +1,11 @@
 import db from '../config/db.js';
+import { cacheGet, cacheSet, cacheDel, CACHE_KEYS } from '../utils/cache.js';
 
 export const getSettings = async (req, res) => {
   try {
+    const cached = cacheGet(CACHE_KEYS.SETTINGS);
+    if (cached) return res.json(cached);
+
     const [rows] = await db.query('SELECT setting_key, setting_value FROM settings');
     const settings = rows.reduce((acc, row) => {
       try {
@@ -11,6 +15,8 @@ export const getSettings = async (req, res) => {
       }
       return acc;
     }, {});
+
+    cacheSet(CACHE_KEYS.SETTINGS, settings);
     res.json(settings);
   } catch (error) {
     console.error('Error fetching settings:', error);
@@ -28,6 +34,8 @@ export const updateSetting = async (req, res) => {
       'INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?',
       [key, stringValue, stringValue]
     );
+    // Invalidate cache so next read reflects the update
+    cacheDel(CACHE_KEYS.SETTINGS);
     res.json({ message: 'Setting updated successfully', key, value });
   } catch (error) {
     console.error('Error updating setting:', error);
