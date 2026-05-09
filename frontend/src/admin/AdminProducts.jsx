@@ -250,7 +250,7 @@ const AdminProducts = () => {
             <p>No products found. Start by adding one above!</p>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <div className="table-responsive">
             <table className="admin-table">
               <thead>
                 <tr>

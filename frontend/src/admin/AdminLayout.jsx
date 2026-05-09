@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { FileText, Package, ArrowLeft, Menu, X, Tags, LayoutDashboard, Bell, ChevronLeft, ChevronRight, Users, Settings } from 'lucide-react';
+import { FileText, Package, ArrowLeft, Menu, X, Tags, LayoutDashboard, Bell, ChevronLeft, ChevronRight, Users, Settings, Volume2, VolumeX } from 'lucide-react';
 import { orderService } from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -13,6 +13,8 @@ const AdminLayout = () => {
   const [lastViewedOrderId, setLastViewedOrderId] = useState(
     parseInt(localStorage.getItem('lastViewedOrderId') || '0', 10)
   );
+  const [soundEnabled, setSoundEnabled] = useState(localStorage.getItem('soundEnabled') !== 'false');
+  const lastPolledIdRef = useRef(parseInt(localStorage.getItem('lastPolledOrderId') || '0', 10));
   const dropdownRef = useRef(null);
 
   const [userRole, setUserRole] = useState('');
@@ -36,7 +38,20 @@ const AdminLayout = () => {
   const fetchPendingOrders = async () => {
     try {
       const res = await orderService.getOrders();
-      setPendingOrders((res.data || []).filter(order => !order.status || order.status === 'pending'));
+      const filtered = (res.data || []).filter(order => !order.status || order.status === 'pending');
+      setPendingOrders(filtered);
+
+      if (filtered.length > 0) {
+        const maxId = Math.max(...filtered.map(o => o.id));
+        if (maxId > lastPolledIdRef.current) {
+          if (lastPolledIdRef.current > 0 && soundEnabled) {
+            const audio = new Audio('/assets/sounds/order-alert.mp3');
+            audio.play().catch(e => console.log('Audio play failed:', e));
+          }
+          lastPolledIdRef.current = maxId;
+          localStorage.setItem('lastPolledOrderId', maxId.toString());
+        }
+      }
     } catch (err) {
       console.error('Failed to fetch pending orders for notifications:', err);
     }
@@ -168,61 +183,99 @@ const AdminLayout = () => {
         </div>
       </aside>
 
-      <main className="admin-main" style={{ position: 'relative' }}>
-        {/* Desktop & Mobile Notification Header */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', position: 'sticky', top: '1.5rem', zIndex: 100, width: '100%', height: 0, pointerEvents: 'none', gap: '1rem', paddingRight: '2rem' }}>
-
-          <div ref={dropdownRef} style={{ position: 'relative', pointerEvents: 'auto', display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
+      <main className="admin-main">
+        {/* Desktop & Mobile Header Bar */}
+        <header className="admin-header">
+          <div ref={dropdownRef} style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
             {/* User Info */}
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem' }}>
-              <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--secondary)' }}>{userName}</span>
-              <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.08em', borderLeft: '1px solid var(--border-color)', paddingLeft: '0.6rem' }}>{userRole}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', background: '#f8f9fa', padding: '0.4rem 1rem', borderRadius: '50px', border: '1px solid var(--border-color)' }}>
+              <div style={{ width: '28px', height: '28px', background: 'var(--primary)', color: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 700 }}>
+                {userName.charAt(0).toUpperCase()}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+                <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--secondary)' }}>{userName}</span>
+                <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', opacity: 0.8 }}>{userRole}</span>
+              </div>
             </div>
 
-            <button
-              onClick={() => {
-                const nextState = !showNotifications;
-                setShowNotifications(nextState);
-                if (nextState) {
-                  const maxId = pendingOrders.length > 0 ? Math.max(...pendingOrders.map(o => o.id)) : lastViewedOrderId;
-                  localStorage.setItem('lastViewedOrderId', maxId.toString());
-                  setLastViewedOrderId(maxId);
-                }
-              }}
-              style={{
-                background: 'white',
-                border: '1px solid var(--border-color)',
-                padding: '0.6rem',
-                borderRadius: '50%',
-                cursor: 'pointer',
-                position: 'relative',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
-              }}
-            >
-              <Bell size={20} color="var(--secondary)" />
-              {pendingOrders.filter(o => o.id > lastViewedOrderId).length > 0 && (
-                <span style={{
-                  position: 'absolute',
-                  top: '-4px',
-                  right: '-4px',
-                  background: '#ef4444',
-                  color: 'white',
-                  fontSize: '0.7rem',
-                  fontWeight: 'bold',
-                  width: '18px',
-                  height: '18px',
-                  borderRadius: '50%',
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+              {/* Sound Toggle */}
+              <button
+                onClick={() => {
+                  const newState = !soundEnabled;
+                  setSoundEnabled(newState);
+                  localStorage.setItem('soundEnabled', newState.toString());
+                }}
+                title={soundEnabled ? "Mute Notifications" : "Unmute Notifications"}
+                style={{
+                  background: 'white',
+                  border: '1px solid var(--border-color)',
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '12px',
+                  cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  {pendingOrders.filter(o => o.id > lastViewedOrderId).length}
-                </span>
-              )}
-            </button>
+                  justifyContent: 'center',
+                  transition: 'all 0.2s ease',
+                  boxShadow: 'var(--shadow-sm)'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                {soundEnabled ? <Volume2 size={18} color="var(--primary)" /> : <VolumeX size={18} color="var(--text-muted)" />}
+              </button>
+
+              <button
+                onClick={() => {
+                  const nextState = !showNotifications;
+                  setShowNotifications(nextState);
+                  if (nextState) {
+                    const maxId = pendingOrders.length > 0 ? Math.max(...pendingOrders.map(o => o.id)) : lastViewedOrderId;
+                    localStorage.setItem('lastViewedOrderId', maxId.toString());
+                    setLastViewedOrderId(maxId);
+                  }
+                }}
+                style={{
+                  background: 'white',
+                  border: '1px solid var(--border-color)',
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                  position: 'relative',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.2s ease',
+                  boxShadow: 'var(--shadow-sm)'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                <Bell size={18} color="var(--secondary)" />
+                {pendingOrders.filter(o => o.id > lastViewedOrderId).length > 0 && (
+                  <span style={{
+                    position: 'absolute',
+                    top: '-5px',
+                    right: '-5px',
+                    background: '#ef4444',
+                    color: 'white',
+                    fontSize: '0.65rem',
+                    fontWeight: 'bold',
+                    width: '18px',
+                    height: '18px',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '2px solid white'
+                  }}>
+                    {pendingOrders.filter(o => o.id > lastViewedOrderId).length}
+                  </span>
+                )}
+              </button>
+            </div>
 
             {/* Dropdown menu */}
             <AnimatePresence>
@@ -293,7 +346,7 @@ const AdminLayout = () => {
               )}
             </AnimatePresence>
           </div>
-        </div>
+        </header>
 
         <div>
           <Outlet />

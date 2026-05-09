@@ -127,7 +127,7 @@ const AdminOrderDetail = () => {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
+      <div className="admin-detail-grid">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           {/* Order Header */}
           <div className="admin-card" style={{ padding: '2rem' }}>
@@ -152,7 +152,7 @@ const AdminOrderDetail = () => {
               </div>
             </div>
             
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <div style={{ background: '#f5ece3', padding: '0.5rem', borderRadius: '8px', color: 'var(--primary)' }}>
                   <Calendar size={20} />

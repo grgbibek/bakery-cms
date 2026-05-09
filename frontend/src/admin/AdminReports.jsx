@@ -248,7 +248,7 @@ const AdminReports = () => {
             <p>No orders match your filter criteria.</p>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <div className="table-responsive">
             <table className="admin-table">
               <thead>
                 <tr>

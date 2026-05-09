@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Truck, MapPin, Phone, CheckCircle, Package, Clock, ExternalLink, Navigation, LogOut, User, Camera, Image as ImageIcon, QrCode, X } from 'lucide-react';
+import { Truck, MapPin, Phone, CheckCircle, Package, Clock, ExternalLink, Navigation, LogOut, User, Camera, Image as ImageIcon, QrCode, X, Volume2, VolumeX } from 'lucide-react';
 import { orderService, settingService } from '../services/api';
 import { Link, useNavigate } from 'react-router-dom';
 import { compressImage } from '../utils/imageUtils';
@@ -14,6 +14,9 @@ const RiderPanel = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [paymentQR, setPaymentQR] = useState('');
   const [showQR, setShowQR] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(null);
+  const [soundEnabled, setSoundEnabled] = useState(localStorage.getItem('riderSoundEnabled') !== 'false');
+  const lastRiderOrderIdRef = useRef(parseInt(localStorage.getItem('lastRiderOrderId') || '0', 10));
   const riderUser = JSON.parse(localStorage.getItem('riderUser') || '{}');
 
   const handleLogout = () => {
@@ -27,7 +30,21 @@ const RiderPanel = () => {
     else setIsRefreshing(true);
     try {
       const res = await orderService.getRiderOrders();
-      setOrders(res.data || []);
+      const fetchedOrders = res.data || [];
+      setOrders(fetchedOrders);
+
+      const relevantOrders = fetchedOrders.filter(o => (o.status === 'ready' && !o.rider_id) || (o.rider_id === riderUser.id && o.status !== 'delivered' && o.status !== 'cancelled'));
+      if (relevantOrders.length > 0) {
+        const maxId = Math.max(...relevantOrders.map(o => o.id));
+        if (maxId > lastRiderOrderIdRef.current) {
+          if (lastRiderOrderIdRef.current > 0 && soundEnabled) {
+            const audio = new Audio('/assets/sounds/order-alert.mp3');
+            audio.play().catch(e => console.log('Audio play failed:', e));
+          }
+          lastRiderOrderIdRef.current = maxId;
+          localStorage.setItem('lastRiderOrderId', maxId.toString());
+        }
+      }
     } catch (err) {
       console.error('Failed to fetch rider orders:', err);
     } finally {
@@ -122,6 +139,17 @@ const RiderPanel = () => {
               <QrCode size={20} />
             </button>
           )}
+          <button 
+            onClick={() => {
+              const newState = !soundEnabled;
+              setSoundEnabled(newState);
+              localStorage.setItem('riderSoundEnabled', newState.toString());
+            }}
+            style={{ background: 'white', border: '1px solid #eee', color: 'var(--text-muted)', width: '40px', height: '40px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            title={soundEnabled ? "Mute Notifications" : "Unmute Notifications"}
+          >
+            {soundEnabled ? <Volume2 size={20} color="var(--primary)" /> : <VolumeX size={20} />}
+          </button>
           <button onClick={handleLogout} style={{ background: '#fee2e2', border: 'none', color: '#ef4444', width: '40px', height: '40px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <LogOut size={20} />
           </button>
@@ -192,6 +220,73 @@ const RiderPanel = () => {
         )}
       </AnimatePresence>
 
+      {/* Confirmation Modal */}
+      <AnimatePresence>
+        {showConfirmModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{ 
+              position: 'fixed', 
+              inset: 0, 
+              background: 'rgba(0,0,0,0.8)', 
+              zIndex: 1001, 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              padding: '2rem',
+              backdropFilter: 'blur(10px)'
+            }}
+            onClick={() => setShowConfirmModal(null)}
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              style={{ 
+                background: 'white', 
+                borderRadius: '32px', 
+                padding: '2.5rem', 
+                maxWidth: '400px', 
+                width: '100%',
+                position: 'relative',
+                textAlign: 'center',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ width: '80px', height: '80px', background: '#ecfdf5', color: '#10b981', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
+                <CheckCircle size={40} />
+              </div>
+
+              <h2 style={{ fontFamily: 'Playfair Display', margin: '0 0 0.75rem', fontSize: '1.8rem' }}>Complete Delivery?</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '1rem', marginBottom: '2.5rem', lineHeight: '1.6' }}>
+                Have you successfully handed over the order <strong>#{showConfirmModal.toString().padStart(5, '0')}</strong> to the customer?
+              </p>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                <button 
+                  onClick={() => {
+                    handleUpdateStatus(showConfirmModal, 'delivered');
+                    setShowConfirmModal(null);
+                  }}
+                  style={{ width: '100%', background: '#10b981', color: 'white', border: 'none', padding: '1.1rem', borderRadius: '18px', fontWeight: 700, fontSize: '1.05rem', cursor: 'pointer', boxShadow: '0 4px 15px rgba(16, 185, 129, 0.2)' }}
+                >
+                  Yes, Delivered
+                </button>
+                <button 
+                  onClick={() => setShowConfirmModal(null)}
+                  style={{ width: '100%', background: '#f8f9fa', color: 'var(--text-muted)', border: '1px solid #eee', padding: '1.1rem', borderRadius: '18px', fontWeight: 600, fontSize: '1rem', cursor: 'pointer' }}
+                >
+                  Not Yet
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {isRefreshing && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ textAlign: 'center', marginBottom: '1rem' }}>
            <div className="spin" style={{ display: 'inline-block' }}><Clock size={14} color="var(--primary)" /></div>
@@ -244,7 +339,7 @@ const RiderPanel = () => {
                       key={order.id} 
                       order={order} 
                       actionLabel="Complete Delivery" 
-                      onAction={() => handleUpdateStatus(order.id, 'delivered')}
+                      onAction={() => setShowConfirmModal(order.id)}
                       onUpload={handleFileUpload}
                       loading={updating === order.id}
                       color="var(--secondary)"

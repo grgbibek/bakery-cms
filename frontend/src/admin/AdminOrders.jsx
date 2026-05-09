@@ -194,7 +194,7 @@ const AdminOrders = () => {
               <p>No active orders require your attention.</p>
             </div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
+            <div className="table-responsive">
               <table className="admin-table">
                 <thead>
                 <tr>

@@ -135,7 +135,7 @@ const AdminUsers = () => {
         {loading ? (
           <p style={{ textAlign: 'center', padding: '2rem' }}>Loading users...</p>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <div className="table-responsive">
             <table className="admin-table">
               <thead>
                 <tr>
