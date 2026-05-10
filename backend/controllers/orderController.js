@@ -9,7 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export const createOrder = async (req, res) => {
-  const { customer, cartItems } = req.body;
+  const { customer, cartItems, promoCode, discountAmount } = req.body;
   
   if (!customer || !cartItems || cartItems.length === 0) {
     return res.status(400).json({ message: 'Invalid order data' });
@@ -64,18 +64,23 @@ export const createOrder = async (req, res) => {
       deliveryCharge = isNearby ? settings.base_fee : settings.premium_fee;
     }
 
-    const finalTotal = subtotal + deliveryCharge;
+    const finalTotal = Math.max(0, subtotal + deliveryCharge - (discountAmount || 0));
 
     // Generate a unique tracking ID
     const trackingId = randomUUID();
 
     // Insert the main order
     const [orderResult] = await connection.query(
-      'INSERT INTO orders (tracking_id, customer_name, customer_email, customer_phone, customer_address, total_amount, delivery_charge, payment_method) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [trackingId, customer.name, customer.email, customer.phone, customer.address, finalTotal, deliveryCharge, customer.payment_method || 'Cash']
+      'INSERT INTO orders (tracking_id, customer_name, customer_email, customer_phone, customer_address, total_amount, delivery_charge, payment_method, promo_code, discount_amount) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [trackingId, customer.name, customer.email, customer.phone, customer.address, finalTotal, deliveryCharge, customer.payment_method || 'Pending', promoCode || null, discountAmount || 0]
     );
 
     const orderId = orderResult.insertId;
+
+    // Increment promo usage if applied
+    if (promoCode) {
+      await connection.query('UPDATE promo_codes SET usage_count = usage_count + 1 WHERE code = ?', [promoCode.toUpperCase()]);
+    }
 
     // Insert order items
     for (const item of finalCartItems) {
@@ -202,20 +207,28 @@ export const getOrderDetails = async (req, res) => {
 
 export const updateOrderStatus = async (req, res) => {
   const { id } = req.params;
-  const { status, notes } = req.body;
+  const { status, notes, payment_method } = req.body;
 
   if (!status) {
     return res.status(400).json({ message: 'Status is required' });
   }
 
   try {
-    let query = 'UPDATE orders SET status = ? WHERE id = ?';
-    let params = [status, id];
+    let query = 'UPDATE orders SET status = ?';
+    let params = [status];
 
     if (notes !== undefined) {
-      query = 'UPDATE orders SET status = ?, admin_notes = ? WHERE id = ?';
-      params = [status, notes, id];
+      query += ', admin_notes = ?';
+      params.push(notes);
     }
+
+    if (payment_method !== undefined) {
+      query += ', payment_method = ?';
+      params.push(payment_method);
+    }
+
+    query += ' WHERE id = ?';
+    params.push(id);
 
     const [result] = await pool.query(query, params);
     

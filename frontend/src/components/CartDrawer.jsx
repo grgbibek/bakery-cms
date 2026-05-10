@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingCart, X, Minus, Plus, Trash2, CheckCircle, Copy, Check, MapPin, Banknote, Smartphone } from 'lucide-react';
+import { ShoppingCart, X, Minus, Plus, Trash2, CheckCircle, Copy, Check, MapPin, Banknote, Smartphone, Tag } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { orderService } from '../services/api';
 import { useNavigate } from 'react-router-dom';
@@ -34,8 +34,7 @@ const CartDrawer = () => {
     email: '', 
     phone: '', 
     area: '', 
-    houseDetails: '',
-    paymentMethod: 'Cash'
+    houseDetails: ''
   });
   const [orderStatus, setOrderStatus] = useState({ loading: false, success: false, error: '' });
   const [trackingId, setTrackingId] = useState('');
@@ -43,12 +42,55 @@ const CartDrawer = () => {
   const [areaSearch, setAreaSearch] = useState('');
   const [showAreaDropdown, setShowAreaDropdown] = useState(false);
 
+  // Promo Code State
+  const [promoInput, setPromoInput] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState(null);
+  const [promoLoading, setPromoLoading] = useState(false);
+
   const filteredLocalities = KATHMANDU_LOCALITIES.filter(loc => 
     loc.toLowerCase().includes(areaSearch.toLowerCase())
   );
 
+  let discountAmount = 0;
+  if (appliedPromo && !appliedPromo.error) {
+    if (appliedPromo.type === 'percentage') {
+      discountAmount = (cartTotal * appliedPromo.value) / 100;
+    } else {
+      discountAmount = Number(appliedPromo.value);
+    }
+    discountAmount = Math.min(discountAmount, cartTotal);
+  }
+
   const deliveryCharge = getDeliveryCharge(orderForm.area);
-  const finalTotal = cartTotal + deliveryCharge;
+  const finalTotal = Math.max(0, cartTotal + deliveryCharge - discountAmount);
+
+  const handleApplyPromo = async () => {
+    if (!promoInput) return;
+    setPromoLoading(true);
+    setAppliedPromo(null);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/api/promos/validate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: promoInput, order_amount: cartTotal })
+      });
+      const data = await res.json();
+      
+      if (!res.ok) throw new Error(data.message || 'Invalid promo code');
+      
+      setAppliedPromo({
+        code: data.promo.code,
+        type: data.promo.discount_type,
+        value: data.promo.discount_value,
+        message: 'Promo applied successfully!'
+      });
+      setPromoInput('');
+    } catch (err) {
+      setAppliedPromo({ error: err.message });
+    } finally {
+      setPromoLoading(false);
+    }
+  };
 
   const handleCheckoutSubmit = async (e) => {
     e.preventDefault();
@@ -57,14 +99,15 @@ const CartDrawer = () => {
       const payload = {
         customer: {
           ...orderForm,
-          address: `${orderForm.area}, Kathmandu (${orderForm.houseDetails})`,
-          payment_method: orderForm.paymentMethod
+          address: `${orderForm.area}, Kathmandu (${orderForm.houseDetails})`
         },
         cartItems: cart.map(c => ({ 
           id: c.id, 
           quantity: c.quantity,
           options: c.options 
-        }))
+        })),
+        promoCode: appliedPromo && !appliedPromo.error ? appliedPromo.code : null,
+        discountAmount: discountAmount
       };
       const res = await orderService.createOrder(payload);
       setTrackingId(res.data.trackingId || '');
@@ -87,8 +130,10 @@ const CartDrawer = () => {
     setIsCheckoutOpen(false);
     setIsSidebarOpen(false);
     setOrderStatus(prev => ({ ...prev, success: false }));
-    setOrderForm({ name: '', email: '', phone: '', area: '', houseDetails: '', paymentMethod: 'Cash' });
+    setOrderForm({ name: '', email: '', phone: '', area: '', houseDetails: '' });
     setTrackingId('');
+    setAppliedPromo(null);
+    setPromoInput('');
   };
 
   return (
@@ -164,16 +209,78 @@ const CartDrawer = () => {
                   </div>
                 )}
 
-                <div style={{ background: 'white', border: '1px solid #f0f0f0', borderRadius: '20px', padding: '1.25rem', boxShadow: '0 4px 15px rgba(0,0,0,0.02)' }}>
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', display: 'block' }}>
+                    Promo Code
+                  </label>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <input 
+                      type="text" 
+                      value={promoInput} 
+                      onChange={e => setPromoInput(e.target.value.toUpperCase())}
+                      placeholder="Got a discount code?" 
+                      className="form-control"
+                      style={{ borderRadius: '12px', padding: '0.8rem', flex: 1, textTransform: 'uppercase', fontSize: '0.9rem' }}
+                      disabled={promoLoading || (appliedPromo && !appliedPromo.error)}
+                    />
+                    <button 
+                      type="button"
+                      onClick={appliedPromo && !appliedPromo.error ? () => setAppliedPromo(null) : handleApplyPromo}
+                      disabled={promoLoading || (!promoInput && !appliedPromo)}
+                      style={{ 
+                        padding: '0 1rem', 
+                        borderRadius: '12px', 
+                        background: appliedPromo && !appliedPromo.error ? '#fee2e2' : 'var(--secondary)', 
+                        color: appliedPromo && !appliedPromo.error ? '#ef4444' : 'white', 
+                        border: 'none', 
+                        cursor: 'pointer',
+                        fontWeight: 700,
+                        fontSize: '0.9rem'
+                      }}
+                    >
+                      {promoLoading ? '...' : (appliedPromo && !appliedPromo.error ? 'Remove' : 'Apply')}
+                    </button>
+                  </div>
+                  {appliedPromo && appliedPromo.error && (
+                    <p style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '0.5rem', fontWeight: 500 }}>{appliedPromo.error}</p>
+                  )}
+                  {appliedPromo && !appliedPromo.error && (
+                    <p style={{ color: '#10b981', fontSize: '0.8rem', marginTop: '0.5rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <CheckCircle size={14} /> {appliedPromo.message}
+                    </p>
+                  )}
+                </div>
+
+                <div style={{ background: 'white', border: '1px solid #f0f0f0', borderRadius: '20px', padding: '1.25rem', boxShadow: '0 4px 15px rgba(0,0,0,0.02)', marginBottom: '1rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
-                      <span style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--secondary)' }}>Cart Total</span>
+                      <span style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--secondary)' }}>Subtotal</span>
                       <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>Excl. Delivery</p>
                     </div>
-                    <span style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '-0.02em' }}>
+                    <span style={{ fontSize: discountAmount > 0 ? '1.2rem' : '1.5rem', fontWeight: 900, color: discountAmount > 0 ? 'var(--secondary)' : 'var(--primary)', letterSpacing: '-0.02em' }}>
                       Rs. {cartTotal.toFixed(2)}
                     </span>
                   </div>
+                  {discountAmount > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px dashed #eee' }}>
+                      <div>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#10b981', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Tag size={14}/> Discount ({appliedPromo?.code})</span>
+                      </div>
+                      <span style={{ fontSize: '1.1rem', fontWeight: 900, color: '#10b981', letterSpacing: '-0.02em' }}>
+                        - Rs. {discountAmount.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                  {discountAmount > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid #eee' }}>
+                      <div>
+                        <span style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary)' }}>New Total</span>
+                      </div>
+                      <span style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '-0.02em' }}>
+                        Rs. {Math.max(0, cartTotal - discountAmount).toFixed(2)}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <button
                   className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}
@@ -221,7 +328,7 @@ const CartDrawer = () => {
                       {copied ? <><Check size={18} /> Copied!</> : <><Copy size={18} /> Copy ID</>}
                     </button>
                     <button
-                      onClick={() => { handleCloseSuccess(); navigate('/track-order'); }}
+                      onClick={() => { handleCloseSuccess(); navigate(`/track-order?id=${trackingId}`); }}
                       style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem', padding: '1rem', borderRadius: '14px', background: 'var(--primary)', color: 'white', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 600, boxShadow: '0 4px 12px rgba(195, 132, 82, 0.2)' }}
                     >
                       <MapPin size={18} /> Track Your Order
@@ -377,79 +484,10 @@ const CartDrawer = () => {
                         />
                       </div>
  
-                       <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.8rem', display: 'block' }}>
-                          Payment Method <span style={{ color: '#ef4444' }}>*</span>
-                        </label>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                          <div 
-                            onClick={() => setOrderForm({ ...orderForm, paymentMethod: 'Cash' })}
-                            style={{ 
-                              padding: '0.8rem 0.5rem', 
-                              borderRadius: '16px', 
-                              border: orderForm.paymentMethod === 'Cash' ? '2px solid #10b981' : '1px solid #eee',
-                              background: orderForm.paymentMethod === 'Cash' ? '#f0fdf4' : 'white',
-                              cursor: 'pointer',
-                              textAlign: 'center',
-                              transition: 'all 0.2s ease',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              alignItems: 'center',
-                              gap: '0.4rem',
-                              boxShadow: orderForm.paymentMethod === 'Cash' ? '0 4px 12px -2px rgba(16, 185, 129, 0.1)' : 'none'
-                            }}
-                          >
-                            <div style={{ 
-                              width: '38px', 
-                              height: '38px', 
-                              borderRadius: '10px', 
-                              background: '#10b981', 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              justifyContent: 'center',
-                              color: 'white'
-                            }}>
-                              <Banknote size={18} />
-                            </div>
-                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: orderForm.paymentMethod === 'Cash' ? '#065f46' : 'var(--text-main)' }}>Cash on Delivery</span>
-                          </div>
 
-                          <div 
-                            onClick={() => setOrderForm({ ...orderForm, paymentMethod: 'Online' })}
-                            style={{ 
-                              padding: '0.8rem 0.5rem', 
-                              borderRadius: '16px', 
-                              border: orderForm.paymentMethod === 'Online' ? '2px solid #e11d48' : '1px solid #eee',
-                              background: orderForm.paymentMethod === 'Online' ? '#fff1f2' : 'white',
-                              cursor: 'pointer',
-                              textAlign: 'center',
-                              transition: 'all 0.2s ease',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              alignItems: 'center',
-                              gap: '0.4rem',
-                              boxShadow: orderForm.paymentMethod === 'Online' ? '0 4px 12px -2px rgba(225, 29, 72, 0.1)' : 'none'
-                            }}
-                          >
-                            <div style={{ 
-                              width: '38px', 
-                              height: '38px', 
-                              borderRadius: '10px', 
-                              background: '#e11d48', 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              justifyContent: 'center',
-                              color: 'white'
-                            }}>
-                              <Smartphone size={18} />
-                            </div>
-                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: orderForm.paymentMethod === 'Online' ? '#9f1239' : 'var(--text-main)' }}>Online / Fonepay</span>
-                          </div>
-                        </div>
-                      </div>
                     </div>
 
-                    <div style={{ marginTop: '2rem', background: '#fcfbfa', padding: '1.5rem', borderRadius: '20px', border: '1px solid #f0f0f0' }}>
+                    <div style={{ marginTop: '1.5rem', background: '#fcfbfa', padding: '1.5rem', borderRadius: '20px', border: '1px solid #f0f0f0' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
                           <span>Subtotal</span>
@@ -459,6 +497,14 @@ const CartDrawer = () => {
                           <span>Delivery Fee {orderForm.area && `(${getDeliveryCharge(orderForm.area) === deliverySettings.fee ? 'Nearby' : 'Far Area'})`}</span>
                           <span>{deliveryCharge === 0 ? <span style={{ color: '#10b981', fontWeight: 600 }}>FREE</span> : `Rs. ${deliveryCharge.toFixed(2)}`}</span>
                         </div>
+                        {discountAmount > 0 && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: '#10b981', fontWeight: 600 }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                              <Tag size={14} /> Discount ({appliedPromo?.code})
+                            </span>
+                            <span>- Rs. {discountAmount.toFixed(2)}</span>
+                          </div>
+                        )}
                         <div style={{ height: '1px', background: '#eee', margin: '0.4rem 0' }} />
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.1rem', fontWeight: 800, color: 'var(--secondary)' }}>
                           <span>Grand Total</span>

@@ -12,6 +12,7 @@ import contentRoutes from './routes/contentRoutes.js';
 import categoryRoutes from './routes/categoryRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
 import settingRoutes from './routes/settingRoutes.js';
+import promoRoutes from './routes/promoRoutes.js';
 
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -64,6 +65,7 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/content', contentRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/settings', settingRoutes);
+app.use('/api/promos', promoRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

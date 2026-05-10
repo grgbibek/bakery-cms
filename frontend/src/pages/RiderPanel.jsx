@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Truck, MapPin, Phone, CheckCircle, Package, Clock, ExternalLink, Navigation, LogOut, User, Camera, Image as ImageIcon, QrCode, X, Volume2, VolumeX } from 'lucide-react';
+import { Truck, MapPin, Phone, CheckCircle, Package, Clock, ExternalLink, Navigation, LogOut, User, Camera, Image as ImageIcon, QrCode, X, Volume2, VolumeX, Banknote, Smartphone } from 'lucide-react';
 import { orderService, settingService } from '../services/api';
 import { Link, useNavigate } from 'react-router-dom';
 import { compressImage } from '../utils/imageUtils';
@@ -15,6 +15,7 @@ const RiderPanel = () => {
   const [paymentQR, setPaymentQR] = useState('');
   const [showQR, setShowQR] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(null);
+  const [riderPaymentMethod, setRiderPaymentMethod] = useState('Cash');
   const [soundEnabled, setSoundEnabled] = useState(localStorage.getItem('riderSoundEnabled') !== 'false');
   const lastRiderOrderIdRef = useRef(parseInt(localStorage.getItem('lastRiderOrderId') || '0', 10));
   const riderUser = JSON.parse(localStorage.getItem('riderUser') || '{}');
@@ -80,10 +81,10 @@ const RiderPanel = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const handleUpdateStatus = async (orderId, status) => {
+  const handleUpdateStatus = async (orderId, status, paymentMethod = null) => {
     setUpdating(orderId);
     try {
-      await orderService.updateOrderStatus(orderId, status);
+      await orderService.updateOrderStatus(orderId, status, null, paymentMethod);
       await fetchRiderOrders();
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to update order status');
@@ -261,14 +262,60 @@ const RiderPanel = () => {
               </div>
 
               <h2 style={{ fontFamily: 'Playfair Display', margin: '0 0 0.75rem', fontSize: '1.8rem' }}>Complete Delivery?</h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '1rem', marginBottom: '2.5rem', lineHeight: '1.6' }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: '1rem', marginBottom: '1.5rem', lineHeight: '1.6' }}>
                 Have you successfully handed over the order <strong>#{showConfirmModal.toString().padStart(5, '0')}</strong> to the customer?
               </p>
+              
+              <div style={{ marginBottom: '2rem', textAlign: 'left' }}>
+                <p style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.75rem', color: 'var(--secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Payment Received Via:</p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <button 
+                    onClick={() => setRiderPaymentMethod('Cash')}
+                    style={{ 
+                      padding: '0.9rem', 
+                      borderRadius: '14px', 
+                      border: riderPaymentMethod === 'Cash' ? '2px solid #10b981' : '1px solid #eee',
+                      background: riderPaymentMethod === 'Cash' ? '#f0fdf4' : 'white',
+                      cursor: 'pointer',
+                      fontWeight: 700,
+                      color: riderPaymentMethod === 'Cash' ? '#065f46' : '#666',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '0.4rem'
+                    }}
+                  >
+                    <Banknote size={20} />
+                    <span>Cash</span>
+                  </button>
+                  <button 
+                    onClick={() => setRiderPaymentMethod('Online')}
+                    style={{ 
+                      padding: '0.9rem', 
+                      borderRadius: '14px', 
+                      border: riderPaymentMethod === 'Online' ? '2px solid #3b82f6' : '1px solid #eee',
+                      background: riderPaymentMethod === 'Online' ? '#eff6ff' : 'white',
+                      cursor: 'pointer',
+                      fontWeight: 700,
+                      color: riderPaymentMethod === 'Online' ? '#1e40af' : '#666',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '0.4rem'
+                    }}
+                  >
+                    <Smartphone size={20} />
+                    <span>Online</span>
+                  </button>
+                </div>
+              </div>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
                 <button 
                   onClick={() => {
-                    handleUpdateStatus(showConfirmModal, 'delivered');
+                    handleUpdateStatus(showConfirmModal, 'delivered', riderPaymentMethod);
                     setShowConfirmModal(null);
                   }}
                   style={{ width: '100%', background: '#10b981', color: 'white', border: 'none', padding: '1.1rem', borderRadius: '18px', fontWeight: 700, fontSize: '1.05rem', cursor: 'pointer', boxShadow: '0 4px 15px rgba(16, 185, 129, 0.2)' }}

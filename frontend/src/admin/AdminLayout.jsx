@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { FileText, Package, ArrowLeft, Menu, X, Tags, LayoutDashboard, Bell, ChevronLeft, ChevronRight, Users, Settings, Volume2, VolumeX } from 'lucide-react';
+import { FileText, Package, ArrowLeft, Menu, X, Tags, Tag, LayoutDashboard, Bell, ChevronLeft, ChevronRight, Users, Settings, Volume2, VolumeX } from 'lucide-react';
 import { orderService } from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -143,6 +143,14 @@ const AdminLayout = () => {
           </Link>
           {userRole === 'admin' && (
             <>
+              <Link
+                to="/admin/promos"
+                className={`sidebar-link ${location.pathname === '/admin/promos' ? 'active' : ''}`}
+                onClick={closeSidebar}
+              >
+                <Tag size={20} style={{ flexShrink: 0 }} />
+                <span className="link-text">Promo Codes</span>
+              </Link>
               <Link
                 to="/admin/content"
                 className={`sidebar-link ${location.pathname === '/admin/content' ? 'active' : ''}`}

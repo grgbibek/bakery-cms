@@ -26,6 +26,7 @@ const AdminUsers       = lazy(() => import('./admin/AdminUsers'));
 const AdminReports     = lazy(() => import('./admin/AdminReports'));
 const AdminSettings    = lazy(() => import('./admin/AdminSettings'));
 const AdminContent     = lazy(() => import('./admin/AdminContent'));
+const AdminPromos      = lazy(() => import('./admin/AdminPromos'));
 
 // ─── Loading fallback ─────────────────────────────────────────────────────────
 const PageLoader = () => (
@@ -110,6 +111,7 @@ function App() {
               <Route path="orders/:id"    element={<AdminOrderDetail />} />
               <Route path="reports"       element={<AdminReports />} />
               <Route path="categories"    element={<AdminCategories />} />
+              <Route path="promos"        element={<AdminPromos />} />
               <Route path="users"         element={<AdminOnlyRoute><AdminUsers /></AdminOnlyRoute>} />
               <Route path="settings"      element={<AdminOnlyRoute><AdminSettings /></AdminOnlyRoute>} />
               <Route path="content"       element={<AdminOnlyRoute><AdminContent /></AdminOnlyRoute>} />

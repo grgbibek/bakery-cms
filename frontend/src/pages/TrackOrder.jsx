@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Package, Clock, CheckCircle, Truck, ChefHat, XCircle } from 'lucide-react';
 import { orderService } from '../services/api';
@@ -35,15 +35,11 @@ const TrackOrder = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleTrack = async (e) => {
-    e.preventDefault();
-    const id = trackingInput.trim();
+  const trackOrderById = useCallback(async (id) => {
     if (!id) return;
-
     setLoading(true);
     setError('');
     setOrder(null);
-
     try {
       const res = await orderService.trackOrder(id);
       setOrder(res.data);
@@ -53,7 +49,20 @@ const TrackOrder = () => {
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  const handleTrack = (e) => {
+    e.preventDefault();
+    trackOrderById(trackingInput.trim());
   };
+
+  useEffect(() => {
+    const idParam = searchParams.get('id');
+    if (idParam) {
+      setTrackingInput(idParam);
+      trackOrderById(idParam);
+    }
+  }, [searchParams, trackOrderById]);
 
   const currentStepIndex = order
     ? STATUS_STEPS.findIndex(s => s.key === order.status)
